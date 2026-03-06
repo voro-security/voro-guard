@@ -3,12 +3,17 @@ from __future__ import annotations
 from typing import Any
 
 
-def build_index_payload(repo_ref: str, files: list[dict[str, Any]], symbols: list[dict[str, Any]]) -> dict[str, Any]:
+def build_index_payload(
+    repo_ref: str,
+    files: list[dict[str, Any]],
+    symbols: list[dict[str, Any]],
+    index_meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     baseline_tokens = sum(int(f.get("approx_tokens", 0)) for f in files)
     indexed_tokens = min(baseline_tokens, max(0, len(symbols) * 60 + len(files) * 20))
     saved_tokens = max(0, baseline_tokens - indexed_tokens)
     saved_percent = round((saved_tokens / baseline_tokens) * 100, 2) if baseline_tokens else 0.0
-    return {
+    payload = {
         "repo_ref": repo_ref,
         "files": files,
         "symbols": symbols,
@@ -25,6 +30,9 @@ def build_index_payload(repo_ref: str, files: list[dict[str, Any]], symbols: lis
             "confidence": "low",
         },
     }
+    if isinstance(index_meta, dict) and index_meta:
+        payload["index_meta"] = index_meta
+    return payload
 
 
 def search_symbols(payload: dict[str, Any], query: str, max_results: int = 20) -> list[dict[str, Any]]:

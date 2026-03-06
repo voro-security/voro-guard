@@ -74,3 +74,42 @@ def test_index_and_search_local_repo(tmp_path: Path) -> None:
     summary = outline["results"]["summary"]
     assert summary["file_count"] == 1
     assert summary["symbol_count"] >= 2
+
+
+def test_artifact_id_stable_and_version_rules_for_rebuilds(tmp_path: Path) -> None:
+    settings.trust_mode = "strict"
+    settings.signing_key = "dev-signing-key"
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    first = create_index(
+        IndexRequest(
+            workspace_id="ws1",
+            source_type="snapshot",
+            source_id="snapshot:daily",
+            source_revision="r1",
+        )
+    )
+    second = create_index(
+        IndexRequest(
+            workspace_id="ws1",
+            source_type="snapshot",
+            source_id="snapshot:daily",
+            source_revision="r2",
+        )
+    )
+    third = create_index(
+        IndexRequest(
+            workspace_id="ws1",
+            source_type="snapshot",
+            source_id="snapshot:daily",
+            source_revision="r2",
+        )
+    )
+
+    assert first["artifact_id"] == second["artifact_id"] == third["artifact_id"]
+    assert first["artifact_version"] == 1
+    assert second["artifact_version"] == 2
+    assert third["artifact_version"] == 2
+    assert first["rebuild_reason"] == "full_rebuild_first_index"
+    assert second["rebuild_reason"] == "full_rebuild_nondiffable_source"
+    assert third["rebuild_reason"] == "cache_hit_same_revision"

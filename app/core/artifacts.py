@@ -56,6 +56,20 @@ def load_artifact(workspace_id: str, repo_fingerprint: str, artifact_id: str) ->
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def load_latest_artifact(workspace_id: str, artifact_id: str) -> dict[str, Any] | None:
+    root = _artifact_root()
+    ws = _sanitize_component(workspace_id)
+    aid = _sanitize_component(artifact_id)
+    pattern = f"{ws}__*__{aid}.json"
+    matches = sorted(root.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+    for p in matches:
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return None
+
+
 def _unsigned_subset(artifact: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": artifact.get("schema_version", "c35-v1"),
