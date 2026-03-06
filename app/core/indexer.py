@@ -62,9 +62,34 @@ def _fetch_github_content(owner: str, repo: str, file_path: str) -> str:
     return resp.text
 
 
-def _build_payload_from_github(repo_ref: str) -> dict[str, Any]:
+def _tree_blob_map(tree: list[dict[str, Any]]) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for entry in tree:
+        if entry.get("type") != "blob":
+            continue
+        p = str(entry.get("path", ""))
+        if not p:
+            continue
+        out[p] = str(entry.get("sha", ""))
+    return out
+
+
+def _group_symbols_by_file(symbols: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    out: dict[str, list[dict[str, Any]]] = {}
+    for sym in symbols:
+        p = str(sym.get("file", ""))
+        out.setdefault(p, []).append(sym)
+    return out
+
+
+def _build_payload_from_github(
+    repo_ref: str,
+    previous_payload: dict[str, Any] | None = None,
+    incremental: bool = False,
+) -> dict[str, Any]:
     owner, repo = _parse_github_owner_repo(repo_ref)
     tree = _fetch_github_tree(owner, repo)
+    blob_map = _tree_blob_map(tree)
 
     file_entries: list[dict[str, Any]] = []
     symbols: list[dict[str, Any]] = []
@@ -72,10 +97,25 @@ def _build_payload_from_github(repo_ref: str) -> dict[str, Any]:
     max_size = max(1, settings.max_file_size_bytes)
     deadline = time.monotonic() + max(1, settings.index_timeout_seconds)
 
+    previous_files = {
+        str(f.get("path", "")): f
+        for f in (previous_payload or {}).get("files", [])
+        if isinstance(f, dict) and isinstance(f.get("path"), str)
+    }
+    previous_symbols = _group_symbols_by_file(
+        [s for s in (previous_payload or {}).get("symbols", []) if isinstance(s, dict)]
+    )
+    previous_blob_map = (
+        (((previous_payload or {}).get("index_meta") or {}).get("github_blob_map") or {})
+        if isinstance((previous_payload or {}).get("index_meta"), dict)
+        else {}
+    )
+
+    selected_entries: list[dict[str, Any]] = []
     for entry in tree:
         if time.monotonic() > deadline:
             break
-        if len(file_entries) >= max_files:
+        if len(selected_entries) >= max_files:
             break
         if entry.get("type") != "blob":
             continue
@@ -89,6 +129,37 @@ def _build_payload_from_github(repo_ref: str) -> dict[str, Any]:
             continue
         if language_for_path(path) is None:
             continue
+        selected_entries.append(entry)
+
+    changed_paths: set[str] = set()
+    deleted_paths: set[str] = set()
+    reused_paths: set[str] = set()
+    if incremental and previous_payload:
+        selected_paths = {str(e.get("path", "")) for e in selected_entries}
+        previous_paths = set(previous_files.keys())
+        deleted_paths = previous_paths - selected_paths
+        for e in selected_entries:
+            p = str(e.get("path", ""))
+            if previous_blob_map.get(p) == blob_map.get(p):
+                reused_paths.add(p)
+            else:
+                changed_paths.add(p)
+    else:
+        changed_paths = {str(e.get("path", "")) for e in selected_entries}
+
+    for path in sorted(reused_paths):
+        meta = previous_files.get(path)
+        if not meta:
+            continue
+        file_entries.append(meta)
+        symbols.extend(previous_symbols.get(path, []))
+
+    for entry in selected_entries:
+        path = str(entry.get("path", ""))
+        if path not in changed_paths:
+            continue
+        if time.monotonic() > deadline:
+            break
         try:
             content = _fetch_github_content(owner, repo, path)
         except httpx.HTTPError:
@@ -100,19 +171,44 @@ def _build_payload_from_github(repo_ref: str) -> dict[str, Any]:
                 "language": language_for_path(path),
                 "line_count": len(content.splitlines()),
                 "approx_tokens": approx_tokens,
+                "blob_sha": blob_map.get(path, ""),
             }
         )
         symbols.extend(extract_symbols(path, content)[: max(1, settings.max_symbols_per_file)])
 
-    return build_index_payload(f"{owner}/{repo}", file_entries, symbols)
+    return build_index_payload(
+        f"{owner}/{repo}",
+        file_entries,
+        symbols,
+        index_meta={
+            "strategy": "diffable",
+            "github_blob_map": blob_map,
+            "incremental": {
+                "enabled": bool(incremental and previous_payload),
+                "changed_files": sorted(changed_paths),
+                "reused_files": sorted(reused_paths),
+                "deleted_files": sorted(deleted_paths),
+                "changed_count": len(changed_paths) + len(deleted_paths),
+                "reused_count": len(reused_paths),
+            },
+        },
+    )
 
 
-def build_payload_from_repo(repo_ref: str | None) -> dict[str, Any]:
+def build_payload_from_repo(
+    repo_ref: str | None,
+    previous_payload: dict[str, Any] | None = None,
+    incremental: bool = False,
+) -> dict[str, Any]:
     if not repo_ref:
         return build_index_payload("", [], [])
 
     if _is_github_ref(repo_ref):
-        return _build_payload_from_github(repo_ref)
+        return _build_payload_from_github(
+            repo_ref,
+            previous_payload=previous_payload,
+            incremental=incremental,
+        )
 
     root = Path(repo_ref).expanduser().resolve()
     files = (
@@ -148,4 +244,19 @@ def build_payload_from_repo(repo_ref: str | None) -> dict[str, Any]:
     if not root.exists() or not root.is_dir():
         # Keep deterministic output for unknown refs.
         repo_label = os.path.expanduser(repo_ref)
-    return build_index_payload(repo_label, file_entries, symbols)
+    return build_index_payload(
+        repo_label,
+        file_entries,
+        symbols,
+        index_meta={
+            "strategy": "local_repo",
+            "incremental": {
+                "enabled": False,
+                "changed_files": [],
+                "reused_files": [],
+                "deleted_files": [],
+                "changed_count": len(file_entries),
+                "reused_count": 0,
+            },
+        },
+    )

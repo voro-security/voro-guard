@@ -50,6 +50,15 @@ def compute_source_fingerprint(
     return f"sha256:{sha256_hex(base)}"
 
 
+def compute_artifact_identity(
+    workspace_id: str,
+    source_type: str,
+    source_id: str,
+) -> str:
+    base = f"{workspace_id}:{source_type}:{source_id}"
+    return sha256_hex(base)[:24]
+
+
 def source_strategy(source_type: str) -> str:
     st = source_type.strip().lower()
     if st in {"github", "git", "local_repo"}:
