@@ -51,13 +51,26 @@ def search_symbols(payload: dict[str, Any], query: str, max_results: int = 20) -
 
 def get_symbol(payload: dict[str, Any], symbol_id: str) -> dict[str, Any] | None:
     symbols = payload.get("symbols", [])
+    files = payload.get("files", [])
+    files_by_path = {str(f.get("path", "")): f for f in files}
     for sym in symbols:
         if sym.get("id") == symbol_id:
-            return sym
+            file_meta = files_by_path.get(str(sym.get("file", "")), {})
+            return {
+                "symbol": sym,
+                "file_meta": {
+                    "path": file_meta.get("path"),
+                    "language": file_meta.get("language"),
+                    "line_count": file_meta.get("line_count"),
+                    "approx_tokens": file_meta.get("approx_tokens"),
+                },
+            }
     return None
 
 
-def get_outline(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def get_outline(payload: dict[str, Any]) -> dict[str, Any]:
+    files = payload.get("files", [])
+    files_by_path = {str(f.get("path", "")): f for f in files}
     by_file: dict[str, list[dict[str, Any]]] = {}
     for sym in payload.get("symbols", []):
         file = str(sym.get("file", ""))
@@ -69,5 +82,23 @@ def get_outline(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 "line": sym.get("line"),
             }
         )
-    return [{"file": file, "symbols": items} for file, items in sorted(by_file.items())]
-
+    file_items = []
+    for file, symbols in sorted(by_file.items()):
+        meta = files_by_path.get(file, {})
+        file_items.append(
+            {
+                "file": file,
+                "language": meta.get("language"),
+                "line_count": meta.get("line_count"),
+                "symbol_count": len(symbols),
+                "symbols": symbols,
+            }
+        )
+    return {
+        "summary": {
+            "file_count": len(files),
+            "file_count_with_symbols": len(file_items),
+            "symbol_count": len(payload.get("symbols", [])),
+        },
+        "files": file_items,
+    }

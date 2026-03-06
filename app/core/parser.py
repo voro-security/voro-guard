@@ -77,6 +77,9 @@ def extract_symbols(file_path: str, content: str) -> list[dict]:
                 continue
             name = m.group(1)
             symbol_id = hashlib.sha256(f"{file_path}:{kind}:{name}:{i}".encode("utf-8")).hexdigest()[:16]
+            start = max(1, i - 2)
+            end = min(len(lines), i + 2)
+            snippet = "\n".join(lines[start - 1 : end])
             symbols.append(
                 {
                     "id": symbol_id,
@@ -86,8 +89,10 @@ def extract_symbols(file_path: str, content: str) -> list[dict]:
                     "line": i,
                     "signature": line.strip()[:200],
                     "language": lang,
+                    "snippet_start_line": start,
+                    "snippet_end_line": end,
+                    "snippet": snippet[:2000],
                 }
             )
             break
     return symbols
-
