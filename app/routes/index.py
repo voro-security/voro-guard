@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
+import httpx
 
 from app.models.schemas import IndexRequest, ArtifactEnvelope, Manifest
 from app.core.signing import canonical_json, sha256_hex, sign_hash
@@ -17,7 +18,12 @@ def create_index(req: IndexRequest):
         raise HTTPException(status_code=500, detail={"reason_code": "internal_error", "message": "missing signing key"})
 
     artifact_id = sha256_hex(f"{req.workspace_id}:{req.repo_fingerprint}")[:24]
-    payload = build_payload_from_repo(req.repo_ref)
+    try:
+        payload = build_payload_from_repo(req.repo_ref)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"reason_code": str(exc), "message": str(exc)}) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail={"reason_code": "github_fetch_failed", "message": str(exc)}) from exc
 
     unsigned = {
         "schema_version": "c35-v1",
