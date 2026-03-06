@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.models.schemas import IndexRequest, ArtifactEnvelope, Manifest
 from app.core.signing import canonical_json, sha256_hex, sign_hash
 from app.core.artifacts import persist_artifact
+from app.core.indexer import build_payload_from_repo
 from app.config import settings
 from app.security import require_auth
 
@@ -16,17 +17,7 @@ def create_index(req: IndexRequest):
         raise HTTPException(status_code=500, detail={"reason_code": "internal_error", "message": "missing signing key"})
 
     artifact_id = sha256_hex(f"{req.workspace_id}:{req.repo_fingerprint}")[:24]
-    payload = {
-        "repo_ref": req.repo_ref or "",
-        "token_savings_estimate": {
-            "baseline_tokens_est": 0,
-            "indexed_tokens_est": 0,
-            "saved_tokens_est": 0,
-            "saved_percent_est": 0.0,
-            "method": "heuristic",
-            "confidence": "low",
-        },
-    }
+    payload = build_payload_from_repo(req.repo_ref)
 
     unsigned = {
         "schema_version": "c35-v1",

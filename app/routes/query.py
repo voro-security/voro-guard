@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.schemas import GetRequest, OutlineRequest, QueryRequest, SearchRequest
 from app.core.artifacts import load_artifact, verify_artifact
+from app.core.store import get_outline as build_outline
+from app.core.store import get_symbol as find_symbol
+from app.core.store import search_symbols as run_search
 from app.security import require_auth
 
 router = APIRouter(dependencies=[Depends(require_auth)])
@@ -38,6 +41,15 @@ def _execute_query(req: QueryRequest):
         status = _REASON_STATUS.get(reason_code, 403)
         raise HTTPException(status_code=status, detail={"reason_code": reason_code, "message": trust_status})
 
+    payload = artifact.get("payload", {})
+    if req.mode == "search":
+        results = run_search(payload, req.query or "")
+    elif req.mode == "get":
+        symbol = find_symbol(payload, req.symbol_id or "")
+        results = [symbol] if symbol else []
+    else:
+        results = build_outline(payload)
+
     return {
         "ok": True,
         "reason_code": "code_index_success",
@@ -46,7 +58,7 @@ def _execute_query(req: QueryRequest):
         "repo_fingerprint": req.repo_fingerprint,
         "artifact_id": req.artifact_id,
         "mode": req.mode,
-        "results": [],
+        "results": results,
         "token_savings_estimate": artifact.get("payload", {}).get(
             "token_savings_estimate",
             {
