@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.schemas import IndexRequest, ArtifactEnvelope, Manifest
 from app.core.signing import canonical_json, sha256_hex, sign_hash
 from app.core.artifacts import persist_artifact
 from app.config import settings
+from app.security import require_auth
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_auth)])
 
 
 @router.post("/v1/index")

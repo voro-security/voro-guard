@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from app.models.schemas import QueryRequest
+from app.models.schemas import GetRequest, OutlineRequest, QueryRequest, SearchRequest
 from app.core.artifacts import load_artifact, verify_artifact
+from app.security import require_auth
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_auth)])
 
 _REASON_STATUS = {
     "artifact_missing": 404,
@@ -16,8 +17,7 @@ _REASON_STATUS = {
 }
 
 
-@router.post("/v1/query")
-def query_index(req: QueryRequest):
+def _execute_query(req: QueryRequest):
     if req.mode == "search" and not (req.query and req.query.strip()):
         raise HTTPException(status_code=400, detail={"reason_code": "query_required", "message": "query is required"})
     if req.mode == "get" and not (req.symbol_id and req.symbol_id.strip()):
@@ -59,3 +59,46 @@ def query_index(req: QueryRequest):
             },
         ),
     }
+
+
+@router.post("/v1/query")
+def query_index(req: QueryRequest):
+    return _execute_query(req)
+
+
+@router.post("/v1/search")
+def search_index(req: SearchRequest):
+    return _execute_query(
+        QueryRequest(
+            workspace_id=req.workspace_id,
+            repo_fingerprint=req.repo_fingerprint,
+            artifact_id=req.artifact_id,
+            mode="search",
+            query=req.query,
+        )
+    )
+
+
+@router.post("/v1/get")
+def get_symbol(req: GetRequest):
+    return _execute_query(
+        QueryRequest(
+            workspace_id=req.workspace_id,
+            repo_fingerprint=req.repo_fingerprint,
+            artifact_id=req.artifact_id,
+            mode="get",
+            symbol_id=req.symbol_id,
+        )
+    )
+
+
+@router.post("/v1/outline")
+def get_outline(req: OutlineRequest):
+    return _execute_query(
+        QueryRequest(
+            workspace_id=req.workspace_id,
+            repo_fingerprint=req.repo_fingerprint,
+            artifact_id=req.artifact_id,
+            mode="outline",
+        )
+    )

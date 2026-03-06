@@ -17,6 +17,26 @@ class QueryRequest(BaseModel):
     mode: Literal["search", "get", "outline"] = "search"
 
 
+class SearchRequest(BaseModel):
+    workspace_id: str = Field(min_length=1)
+    repo_fingerprint: str = Field(min_length=1)
+    artifact_id: str = Field(min_length=1)
+    query: str = Field(min_length=1)
+
+
+class GetRequest(BaseModel):
+    workspace_id: str = Field(min_length=1)
+    repo_fingerprint: str = Field(min_length=1)
+    artifact_id: str = Field(min_length=1)
+    symbol_id: str = Field(min_length=1)
+
+
+class OutlineRequest(BaseModel):
+    workspace_id: str = Field(min_length=1)
+    repo_fingerprint: str = Field(min_length=1)
+    artifact_id: str = Field(min_length=1)
+
+
 class Manifest(BaseModel):
     signer: str
     signed_at: str

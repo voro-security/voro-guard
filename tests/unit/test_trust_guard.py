@@ -12,7 +12,8 @@ from app.config import settings
 from app.core.artifacts import artifact_path
 from app.models.schemas import IndexRequest, QueryRequest
 from app.routes.index import create_index
-from app.routes.query import query_index
+from app.routes.query import get_outline, get_symbol, query_index, search_index
+from app.models.schemas import GetRequest, OutlineRequest, SearchRequest
 
 
 def _load_json(path: Path) -> dict:
@@ -138,3 +139,39 @@ def test_strict_mode_unsigned_artifact_denied() -> None:
     except HTTPException as exc:
         assert exc.status_code == 403
         assert exc.detail["reason_code"] == "artifact_untrusted_missing_manifest"
+
+
+def test_split_routes_search_get_outline_success() -> None:
+    indexed = create_index(IndexRequest(workspace_id="ws1", repo_fingerprint="sha256:abc"))
+
+    search_resp = search_index(
+        SearchRequest(
+            workspace_id="ws1",
+            repo_fingerprint="sha256:abc",
+            artifact_id=indexed["artifact_id"],
+            query="foo",
+        )
+    )
+    assert search_resp["ok"] is True
+    assert search_resp["mode"] == "search"
+
+    get_resp = get_symbol(
+        GetRequest(
+            workspace_id="ws1",
+            repo_fingerprint="sha256:abc",
+            artifact_id=indexed["artifact_id"],
+            symbol_id="sym-1",
+        )
+    )
+    assert get_resp["ok"] is True
+    assert get_resp["mode"] == "get"
+
+    outline_resp = get_outline(
+        OutlineRequest(
+            workspace_id="ws1",
+            repo_fingerprint="sha256:abc",
+            artifact_id=indexed["artifact_id"],
+        )
+    )
+    assert outline_resp["ok"] is True
+    assert outline_resp["mode"] == "outline"
