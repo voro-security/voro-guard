@@ -60,8 +60,14 @@ def _unsigned_subset(artifact: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": artifact.get("schema_version", "c35-v1"),
         "workspace_id": artifact.get("workspace_id", ""),
+        "source_type": artifact.get("source_type", ""),
+        "source_id": artifact.get("source_id", ""),
+        "source_revision": artifact.get("source_revision", ""),
+        "source_fingerprint": artifact.get("source_fingerprint", artifact.get("repo_fingerprint", "")),
         "repo_fingerprint": artifact.get("repo_fingerprint", ""),
         "artifact_id": artifact.get("artifact_id", ""),
+        "artifact_version": artifact.get("artifact_version", 1),
+        "rebuild_reason": artifact.get("rebuild_reason", "full_rebuild_first_index"),
         "payload": artifact.get("payload", {}),
     }
 
@@ -69,7 +75,7 @@ def _unsigned_subset(artifact: dict[str, Any]) -> dict[str, Any]:
 def verify_artifact(
     artifact: dict[str, Any],
     workspace_id: str,
-    repo_fingerprint: str,
+    source_fingerprint: str,
     artifact_id: str,
 ) -> Tuple[bool, str, str]:
     if not artifact:
@@ -78,7 +84,7 @@ def verify_artifact(
     # D1 identity checks
     if (
         artifact.get("workspace_id") != workspace_id
-        or artifact.get("repo_fingerprint") != repo_fingerprint
+        or artifact.get("source_fingerprint", artifact.get("repo_fingerprint")) != source_fingerprint
         or artifact.get("artifact_id") != artifact_id
     ):
         return False, "artifact_identity_mismatch", "artifact identity mismatch"
