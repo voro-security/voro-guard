@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
+
 from app.models.schemas import IndexRequest, ArtifactEnvelope, Manifest
 from app.core.signing import canonical_json, sha256_hex, sign_hash
+from app.core.artifacts import persist_artifact
 from app.config import settings
 
 router = APIRouter()
@@ -49,4 +51,12 @@ def create_index(req: IndexRequest):
         payload=payload,
     )
 
-    return {"ok": True, "reason_code": "code_index_success", **envelope.model_dump()}
+    envelope_dict = envelope.model_dump()
+    try:
+        stored_path = persist_artifact(envelope_dict)
+    except ValueError as exc:
+        code = str(exc)
+        status = 403 if code == "artifact_path_outside_root" else 422
+        raise HTTPException(status_code=status, detail={"reason_code": code, "message": code}) from exc
+
+    return {"ok": True, "reason_code": "code_index_success", "artifact_path": stored_path, **envelope_dict}
