@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 import os
+import time
 
 import httpx
  
@@ -67,10 +68,13 @@ def _build_payload_from_github(repo_ref: str) -> dict[str, Any]:
 
     file_entries: list[dict[str, Any]] = []
     symbols: list[dict[str, Any]] = []
-    max_files = 400
-    max_size = 500 * 1024
+    max_files = max(1, settings.max_files)
+    max_size = max(1, settings.max_file_size_bytes)
+    deadline = time.monotonic() + max(1, settings.index_timeout_seconds)
 
     for entry in tree:
+        if time.monotonic() > deadline:
+            break
         if len(file_entries) >= max_files:
             break
         if entry.get("type") != "blob":
@@ -98,7 +102,7 @@ def _build_payload_from_github(repo_ref: str) -> dict[str, Any]:
                 "approx_tokens": approx_tokens,
             }
         )
-        symbols.extend(extract_symbols(path, content))
+        symbols.extend(extract_symbols(path, content)[: max(1, settings.max_symbols_per_file)])
 
     return build_index_payload(f"{owner}/{repo}", file_entries, symbols)
 
@@ -111,11 +115,22 @@ def build_payload_from_repo(repo_ref: str | None) -> dict[str, Any]:
         return _build_payload_from_github(repo_ref)
 
     root = Path(repo_ref).expanduser().resolve()
-    files = discover_local_files(repo_root=root) if root.exists() and root.is_dir() else []
+    files = (
+        discover_local_files(
+            repo_root=root,
+            max_files=max(1, settings.max_files),
+            max_size=max(1, settings.max_file_size_bytes),
+        )
+        if root.exists() and root.is_dir()
+        else []
+    )
+    deadline = time.monotonic() + max(1, settings.index_timeout_seconds)
 
     file_entries: list[dict[str, Any]] = []
     symbols: list[dict[str, Any]] = []
     for file_path in files:
+        if time.monotonic() > deadline:
+            break
         rel_path = file_path.relative_to(root).as_posix()
         content = read_text_file(file_path)
         approx_tokens = max(1, len(content) // 4)
@@ -127,7 +142,7 @@ def build_payload_from_repo(repo_ref: str | None) -> dict[str, Any]:
                 "approx_tokens": approx_tokens,
             }
         )
-        symbols.extend(extract_symbols(rel_path, content))
+        symbols.extend(extract_symbols(rel_path, content)[: max(1, settings.max_symbols_per_file)])
 
     repo_label = str(root)
     if not root.exists() or not root.is_dir():

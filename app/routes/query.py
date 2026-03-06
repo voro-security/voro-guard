@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.metrics import metrics
 from app.models.schemas import GetRequest, OutlineRequest, QueryRequest, SearchRequest
 from app.core.artifacts import load_artifact, verify_artifact
 from app.core.store import get_outline as build_outline
@@ -21,23 +22,29 @@ _REASON_STATUS = {
 
 
 def _execute_query(req: QueryRequest):
+    metrics.record_request()
     if req.mode == "search" and not (req.query and req.query.strip()):
+        metrics.record_deny("query_required")
         raise HTTPException(status_code=400, detail={"reason_code": "query_required", "message": "query is required"})
     if req.mode == "get" and not (req.symbol_id and req.symbol_id.strip()):
+        metrics.record_deny("symbol_id_required")
         raise HTTPException(status_code=400, detail={"reason_code": "symbol_id_required", "message": "symbol_id is required"})
 
     try:
         artifact = load_artifact(req.workspace_id, req.repo_fingerprint, req.artifact_id)
     except ValueError as exc:
         code = str(exc)
+        metrics.record_deny(code)
         status = _REASON_STATUS.get(code, 422)
         raise HTTPException(status_code=status, detail={"reason_code": code, "message": code}) from exc
 
     if artifact is None:
+        metrics.record_deny("artifact_missing")
         raise HTTPException(status_code=404, detail={"reason_code": "artifact_missing", "message": "artifact not found"})
 
     ok, reason_code, trust_status = verify_artifact(artifact, req.workspace_id, req.repo_fingerprint, req.artifact_id)
     if not ok:
+        metrics.record_deny(reason_code)
         status = _REASON_STATUS.get(reason_code, 403)
         raise HTTPException(status_code=status, detail={"reason_code": reason_code, "message": trust_status})
 
@@ -50,7 +57,7 @@ def _execute_query(req: QueryRequest):
     else:
         results = build_outline(payload)
 
-    return {
+    response = {
         "ok": True,
         "reason_code": "code_index_success",
         "artifact_trust": trust_status,
@@ -71,6 +78,8 @@ def _execute_query(req: QueryRequest):
             },
         ),
     }
+    metrics.record_success(response["token_savings_estimate"].get("saved_tokens_est"))
+    return response
 
 
 @router.post("/v1/query")
@@ -114,3 +123,8 @@ def get_outline(req: OutlineRequest):
             mode="outline",
         )
     )
+
+
+@router.get("/v1/metrics")
+def get_metrics():
+    return {"ok": True, "metrics": metrics.snapshot()}

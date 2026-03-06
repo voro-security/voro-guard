@@ -9,6 +9,10 @@ class Settings(BaseModel):
     artifact_root: str = os.getenv("ARTIFACT_ROOT", "./data/artifacts").strip()
     service_token: str = os.getenv("CODE_INDEX_SERVICE_TOKEN", "").strip()
     github_token: str = os.getenv("CODE_INDEX_GITHUB_TOKEN", "").strip()
+    max_files: int = int(os.getenv("CODE_INDEX_MAX_FILES", "400"))
+    max_file_size_bytes: int = int(os.getenv("CODE_INDEX_MAX_FILE_SIZE_BYTES", str(500 * 1024)))
+    max_symbols_per_file: int = int(os.getenv("CODE_INDEX_MAX_SYMBOLS_PER_FILE", "200"))
+    index_timeout_seconds: int = int(os.getenv("CODE_INDEX_INDEX_TIMEOUT_SECONDS", "30"))
 
 
 settings = Settings()
