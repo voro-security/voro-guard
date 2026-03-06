@@ -31,7 +31,7 @@ def _execute_query(req: QueryRequest):
         raise HTTPException(status_code=400, detail={"reason_code": "symbol_id_required", "message": "symbol_id is required"})
 
     try:
-        artifact = load_artifact(req.workspace_id, req.repo_fingerprint, req.artifact_id)
+        artifact = load_artifact(req.workspace_id, req.source_fingerprint or req.repo_fingerprint or "", req.artifact_id)
     except ValueError as exc:
         code = str(exc)
         metrics.record_deny(code)
@@ -42,7 +42,12 @@ def _execute_query(req: QueryRequest):
         metrics.record_deny("artifact_missing")
         raise HTTPException(status_code=404, detail={"reason_code": "artifact_missing", "message": "artifact not found"})
 
-    ok, reason_code, trust_status = verify_artifact(artifact, req.workspace_id, req.repo_fingerprint, req.artifact_id)
+    ok, reason_code, trust_status = verify_artifact(
+        artifact,
+        req.workspace_id,
+        req.source_fingerprint or req.repo_fingerprint or "",
+        req.artifact_id,
+    )
     if not ok:
         metrics.record_deny(reason_code)
         status = _REASON_STATUS.get(reason_code, 403)
@@ -62,8 +67,14 @@ def _execute_query(req: QueryRequest):
         "reason_code": "code_index_success",
         "artifact_trust": trust_status,
         "workspace_id": req.workspace_id,
-        "repo_fingerprint": req.repo_fingerprint,
+        "source_type": artifact.get("source_type"),
+        "source_id": artifact.get("source_id"),
+        "source_revision": artifact.get("source_revision"),
+        "source_fingerprint": artifact.get("source_fingerprint", req.source_fingerprint),
+        "repo_fingerprint": artifact.get("repo_fingerprint", req.repo_fingerprint),
         "artifact_id": req.artifact_id,
+        "artifact_version": artifact.get("artifact_version", 1),
+        "rebuild_reason": artifact.get("rebuild_reason", "full_rebuild_first_index"),
         "mode": req.mode,
         "results": results,
         "token_savings_estimate": artifact.get("payload", {}).get(
@@ -92,6 +103,7 @@ def search_index(req: SearchRequest):
     return _execute_query(
         QueryRequest(
             workspace_id=req.workspace_id,
+            source_fingerprint=req.source_fingerprint,
             repo_fingerprint=req.repo_fingerprint,
             artifact_id=req.artifact_id,
             mode="search",
@@ -105,6 +117,7 @@ def get_symbol(req: GetRequest):
     return _execute_query(
         QueryRequest(
             workspace_id=req.workspace_id,
+            source_fingerprint=req.source_fingerprint,
             repo_fingerprint=req.repo_fingerprint,
             artifact_id=req.artifact_id,
             mode="get",
@@ -118,6 +131,7 @@ def get_outline(req: OutlineRequest):
     return _execute_query(
         QueryRequest(
             workspace_id=req.workspace_id,
+            source_fingerprint=req.source_fingerprint,
             repo_fingerprint=req.repo_fingerprint,
             artifact_id=req.artifact_id,
             mode="outline",
