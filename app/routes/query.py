@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.metrics import metrics
-from app.models.schemas import GetRequest, OutlineRequest, QueryRequest, SearchRequest
+from app.models.schemas import CallgraphRequest, GetRequest, OutlineRequest, QueryRequest, SearchRequest
 from app.core.artifacts import load_artifact, verify_artifact
+from app.core.callgraph import build_callgraph_from_file
 from app.core.store import get_outline as build_outline
 from app.core.store import get_symbol as find_symbol
 from app.core.store import search_symbols as run_search
@@ -142,3 +143,17 @@ def get_outline(req: OutlineRequest):
 @router.get("/v1/metrics")
 def get_metrics():
     return {"ok": True, "metrics": metrics.snapshot()}
+
+
+@router.post("/v1/callgraph")
+def get_callgraph(req: CallgraphRequest):
+    metrics.record_request()
+    entry_points, error = build_callgraph_from_file(
+        req.file,
+        entry_function=req.entry_function,
+        max_depth=req.max_depth,
+    )
+    if error:
+        # Graceful failure mode per spec: never raise 500 for missing entry/function.
+        return {"entry_points": [], "error": error}
+    return {"entry_points": entry_points}
