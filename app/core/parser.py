@@ -4,6 +4,8 @@ from pathlib import Path
 import hashlib
 import re
 
+from app.core.callgraph import parse_solidity_functions
+
 LANGUAGE_EXTENSIONS = {
     ".py": "python",
     ".js": "javascript",
@@ -67,6 +69,8 @@ def extract_symbols(file_path: str, content: str) -> list[dict]:
     lang = language_for_path(file_path)
     if not lang:
         return []
+    if lang == "solidity":
+        return _extract_solidity_symbols(file_path, content)
     patterns = _PATTERNS.get(lang, [])
     lines = content.splitlines()
     symbols: list[dict] = []
@@ -95,4 +99,70 @@ def extract_symbols(file_path: str, content: str) -> list[dict]:
                 }
             )
             break
+    return symbols
+
+
+def _extract_solidity_symbols(file_path: str, content: str) -> list[dict]:
+    lines = content.splitlines()
+    symbols: list[dict] = []
+    patterns = _PATTERNS.get("solidity", [])
+
+    # Keep contract/interface extraction behavior unchanged.
+    for i, line in enumerate(lines, start=1):
+        for kind, pattern in patterns:
+            if kind == "function":
+                continue
+            m = re.search(pattern, line)
+            if not m:
+                continue
+            name = m.group(1)
+            symbol_id = hashlib.sha256(f"{file_path}:{kind}:{name}:{i}".encode("utf-8")).hexdigest()[:16]
+            start = max(1, i - 2)
+            end = min(len(lines), i + 2)
+            snippet = "\n".join(lines[start - 1 : end])
+            symbols.append(
+                {
+                    "id": symbol_id,
+                    "kind": kind,
+                    "name": name,
+                    "file": file_path,
+                    "line": i,
+                    "signature": line.strip()[:200],
+                    "language": "solidity",
+                    "snippet_start_line": start,
+                    "snippet_end_line": end,
+                    "snippet": snippet[:2000],
+                }
+            )
+            break
+
+    # Solidity function metadata with visibility/reachability.
+    for fn in parse_solidity_functions(content).values():
+        line = max(1, fn.line)
+        src_line = lines[line - 1] if line - 1 < len(lines) else ""
+        symbol_id = hashlib.sha256(
+            f"{file_path}:function:{fn.name}:{line}".encode("utf-8")
+        ).hexdigest()[:16]
+        start = max(1, line - 2)
+        end = min(len(lines), line + 2)
+        snippet = "\n".join(lines[start - 1 : end])
+        symbols.append(
+            {
+                "id": symbol_id,
+                "kind": "function",
+                "name": fn.name,
+                "file": file_path,
+                "line": line,
+                "signature": src_line.strip()[:200],
+                "language": "solidity",
+                "visibility": fn.visibility,
+                "payable": fn.payable,
+                "reachable": fn.reachable,
+                "snippet_start_line": start,
+                "snippet_end_line": end,
+                "snippet": snippet[:2000],
+            }
+        )
+
+    symbols.sort(key=lambda s: (int(s.get("line", 0)), str(s.get("kind", "")), str(s.get("name", ""))))
     return symbols

@@ -130,6 +130,12 @@ class OutlineRequest(BaseModel):
         return self
 
 
+class CallgraphRequest(BaseModel):
+    file: str = Field(min_length=1)
+    entry_function: str = Field(min_length=1)
+    max_depth: int = Field(default=10, ge=1, le=50)
+
+
 class Manifest(BaseModel):
     signer: str
     signed_at: str
