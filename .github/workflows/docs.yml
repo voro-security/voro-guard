@@ -1,0 +1,37 @@
+name: Docs Guard
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  docs-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce CLAUDE.md updates for structural changes
+        run: |
+          BASE="${GITHUB_BASE_REF:-main}"
+          if git rev-parse --verify "origin/${BASE}" >/dev/null 2>&1; then
+            RANGE="origin/${BASE}...HEAD"
+          elif git rev-parse --verify origin/main >/dev/null 2>&1; then
+            RANGE="origin/main...HEAD"
+          else
+            RANGE="HEAD~1...HEAD"
+          fi
+
+          CHANGED="$(git diff --name-only ${RANGE})"
+          echo "$CHANGED"
+
+          if echo "$CHANGED" | grep -Eq '^(app/)'; then
+            if ! echo "$CHANGED" | grep -qx 'CLAUDE.md'; then
+              echo "::error::Structural changes detected without CLAUDE.md update."
+              echo "Update the Architectural Reference section in CLAUDE.md."
+              exit 1
+            fi
+          fi
