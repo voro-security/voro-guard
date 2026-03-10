@@ -1,0 +1,319 @@
+{
+  "artifact_hash": "d6ca5b0b2dc9c23530325ae7994b6f42fc26a81addaf66e74eb886ec7e504f93",
+  "artifact_id": "d1fb0963b81f43b7b22071e8",
+  "artifact_version": 1,
+  "manifest": {
+    "key_id": null,
+    "signature": "",
+    "signed_at": "2026-03-09T10:23:30.191737+00:00",
+    "signer": "voro-index-guard"
+  },
+  "payload": {
+    "files": [
+      {
+        "approx_tokens": 284,
+        "language": "solidity",
+        "line_count": 29,
+        "path": "ISimpleGovernance.sol"
+      },
+      {
+        "approx_tokens": 819,
+        "language": "solidity",
+        "line_count": 105,
+        "path": "SimpleGovernance.sol"
+      },
+      {
+        "approx_tokens": 620,
+        "language": "solidity",
+        "line_count": 77,
+        "path": "SelfiePool.sol"
+      }
+    ],
+    "index_meta": {
+      "incremental": {
+        "changed_count": 3,
+        "changed_files": [],
+        "deleted_files": [],
+        "enabled": false,
+        "reused_count": 0,
+        "reused_files": []
+      },
+      "strategy": "local_repo"
+    },
+    "repo_ref": "/home/alienblackunix/damn-vulnerable-defi/src/selfie",
+    "stats": {
+      "file_count": 3,
+      "symbol_count": 21
+    },
+    "symbols": [
+      {
+        "file": "ISimpleGovernance.sol",
+        "id": "41b1b9318839a4c1",
+        "kind": "interface",
+        "language": "solidity",
+        "line": 5,
+        "name": "ISimpleGovernance",
+        "signature": "interface ISimpleGovernance {",
+        "snippet": "pragma solidity =0.8.25;\n\ninterface ISimpleGovernance {\n    struct GovernanceAction {\n        uint128 value;",
+        "snippet_end_line": 7,
+        "snippet_start_line": 3
+      },
+      {
+        "file": "ISimpleGovernance.sol",
+        "id": "87a0646f2fe58b0f",
+        "kind": "function",
+        "language": "solidity",
+        "line": 23,
+        "name": "queueAction",
+        "signature": "function queueAction(address target, uint128 value, bytes calldata data) external returns (uint256 actionId);",
+        "snippet": "    event ActionExecuted(uint256 actionId, address indexed caller);\n\n    function queueAction(address target, uint128 value, bytes calldata data) external returns (uint256 actionId);\n    function executeAction(uint256 actionId) external payable returns (bytes memory returndata);\n    function getActionDelay() external view returns (uint256 delay);",
+        "snippet_end_line": 25,
+        "snippet_start_line": 21
+      },
+      {
+        "file": "ISimpleGovernance.sol",
+        "id": "93ef3b61447789cb",
+        "kind": "function",
+        "language": "solidity",
+        "line": 24,
+        "name": "executeAction",
+        "signature": "function executeAction(uint256 actionId) external payable returns (bytes memory returndata);",
+        "snippet": "\n    function queueAction(address target, uint128 value, bytes calldata data) external returns (uint256 actionId);\n    function executeAction(uint256 actionId) external payable returns (bytes memory returndata);\n    function getActionDelay() external view returns (uint256 delay);\n    function getVotingToken() external view returns (address token);",
+        "snippet_end_line": 26,
+        "snippet_start_line": 22
+      },
+      {
+        "file": "ISimpleGovernance.sol",
+        "id": "3c831dd885a24bd1",
+        "kind": "function",
+        "language": "solidity",
+        "line": 25,
+        "name": "getActionDelay",
+        "signature": "function getActionDelay() external view returns (uint256 delay);",
+        "snippet": "    function queueAction(address target, uint128 value, bytes calldata data) external returns (uint256 actionId);\n    function executeAction(uint256 actionId) external payable returns (bytes memory returndata);\n    function getActionDelay() external view returns (uint256 delay);\n    function getVotingToken() external view returns (address token);\n    function getAction(uint256 actionId) external view returns (GovernanceAction memory action);",
+        "snippet_end_line": 27,
+        "snippet_start_line": 23
+      },
+      {
+        "file": "ISimpleGovernance.sol",
+        "id": "4ad7f94231f9d3c7",
+        "kind": "function",
+        "language": "solidity",
+        "line": 26,
+        "name": "getVotingToken",
+        "signature": "function getVotingToken() external view returns (address token);",
+        "snippet": "    function executeAction(uint256 actionId) external payable returns (bytes memory returndata);\n    function getActionDelay() external view returns (uint256 delay);\n    function getVotingToken() external view returns (address token);\n    function getAction(uint256 actionId) external view returns (GovernanceAction memory action);\n    function getActionCounter() external view returns (uint256);",
+        "snippet_end_line": 28,
+        "snippet_start_line": 24
+      },
+      {
+        "file": "ISimpleGovernance.sol",
+        "id": "9fdedeacdf0bdc32",
+        "kind": "function",
+        "language": "solidity",
+        "line": 27,
+        "name": "getAction",
+        "signature": "function getAction(uint256 actionId) external view returns (GovernanceAction memory action);",
+        "snippet": "    function getActionDelay() external view returns (uint256 delay);\n    function getVotingToken() external view returns (address token);\n    function getAction(uint256 actionId) external view returns (GovernanceAction memory action);\n    function getActionCounter() external view returns (uint256);\n}",
+        "snippet_end_line": 29,
+        "snippet_start_line": 25
+      },
+      {
+        "file": "ISimpleGovernance.sol",
+        "id": "6ad94477d2f5dd62",
+        "kind": "function",
+        "language": "solidity",
+        "line": 28,
+        "name": "getActionCounter",
+        "signature": "function getActionCounter() external view returns (uint256);",
+        "snippet": "    function getVotingToken() external view returns (address token);\n    function getAction(uint256 actionId) external view returns (GovernanceAction memory action);\n    function getActionCounter() external view returns (uint256);\n}",
+        "snippet_end_line": 29,
+        "snippet_start_line": 26
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "47527961f1f5471f",
+        "kind": "contract",
+        "language": "solidity",
+        "line": 9,
+        "name": "SimpleGovernance",
+        "signature": "contract SimpleGovernance is ISimpleGovernance {",
+        "snippet": "import {Address} from \"@openzeppelin/contracts/utils/Address.sol\";\n\ncontract SimpleGovernance is ISimpleGovernance {\n    using Address for address;\n",
+        "snippet_end_line": 11,
+        "snippet_start_line": 7
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "17211e9a59035f83",
+        "kind": "function",
+        "language": "solidity",
+        "line": 23,
+        "name": "queueAction",
+        "signature": "function queueAction(address target, uint128 value, bytes calldata data) external returns (uint256 actionId) {",
+        "snippet": "    }\n\n    function queueAction(address target, uint128 value, bytes calldata data) external returns (uint256 actionId) {\n        if (!_hasEnoughVotes(msg.sender)) {\n            revert NotEnoughVotes(msg.sender);",
+        "snippet_end_line": 25,
+        "snippet_start_line": 21
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "3b9fde402085ddfa",
+        "kind": "function",
+        "language": "solidity",
+        "line": 53,
+        "name": "executeAction",
+        "signature": "function executeAction(uint256 actionId) external payable returns (bytes memory) {",
+        "snippet": "    }\n\n    function executeAction(uint256 actionId) external payable returns (bytes memory) {\n        if (!_canBeExecuted(actionId)) {\n            revert CannotExecute(actionId);",
+        "snippet_end_line": 55,
+        "snippet_start_line": 51
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "9493c0969477abd9",
+        "kind": "function",
+        "language": "solidity",
+        "line": 66,
+        "name": "getActionDelay",
+        "signature": "function getActionDelay() external pure returns (uint256) {",
+        "snippet": "    }\n\n    function getActionDelay() external pure returns (uint256) {\n        return ACTION_DELAY_IN_SECONDS;\n    }",
+        "snippet_end_line": 68,
+        "snippet_start_line": 64
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "5e940af51ac7c44e",
+        "kind": "function",
+        "language": "solidity",
+        "line": 70,
+        "name": "getVotingToken",
+        "signature": "function getVotingToken() external view returns (address) {",
+        "snippet": "    }\n\n    function getVotingToken() external view returns (address) {\n        return address(_votingToken);\n    }",
+        "snippet_end_line": 72,
+        "snippet_start_line": 68
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "8e1a3ffca0cc5c74",
+        "kind": "function",
+        "language": "solidity",
+        "line": 74,
+        "name": "getAction",
+        "signature": "function getAction(uint256 actionId) external view returns (GovernanceAction memory) {",
+        "snippet": "    }\n\n    function getAction(uint256 actionId) external view returns (GovernanceAction memory) {\n        return _actions[actionId];\n    }",
+        "snippet_end_line": 76,
+        "snippet_start_line": 72
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "2252d07dbdb1e13f",
+        "kind": "function",
+        "language": "solidity",
+        "line": 78,
+        "name": "getActionCounter",
+        "signature": "function getActionCounter() external view returns (uint256) {",
+        "snippet": "    }\n\n    function getActionCounter() external view returns (uint256) {\n        return _actionCounter;\n    }",
+        "snippet_end_line": 80,
+        "snippet_start_line": 76
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "49378265f35a3f2c",
+        "kind": "function",
+        "language": "solidity",
+        "line": 87,
+        "name": "_canBeExecuted",
+        "signature": "function _canBeExecuted(uint256 actionId) private view returns (bool) {",
+        "snippet": "     * 2) enough time has passed since it was first proposed\n     */\n    function _canBeExecuted(uint256 actionId) private view returns (bool) {\n        GovernanceAction memory actionToExecute = _actions[actionId];\n",
+        "snippet_end_line": 89,
+        "snippet_start_line": 85
+      },
+      {
+        "file": "SimpleGovernance.sol",
+        "id": "8b5a0d044843dd18",
+        "kind": "function",
+        "language": "solidity",
+        "line": 100,
+        "name": "_hasEnoughVotes",
+        "signature": "function _hasEnoughVotes(address who) private view returns (bool) {",
+        "snippet": "    }\n\n    function _hasEnoughVotes(address who) private view returns (bool) {\n        uint256 balance = _votingToken.getVotes(who);\n        uint256 halfTotalSupply = _votingToken.totalSupply() / 2;",
+        "snippet_end_line": 102,
+        "snippet_start_line": 98
+      },
+      {
+        "file": "SelfiePool.sol",
+        "id": "3fabf3ca93a4d069",
+        "kind": "contract",
+        "language": "solidity",
+        "line": 11,
+        "name": "SelfiePool",
+        "signature": "contract SelfiePool is IERC3156FlashLender, ReentrancyGuard {",
+        "snippet": "import {SimpleGovernance} from \"./SimpleGovernance.sol\";\n\ncontract SelfiePool is IERC3156FlashLender, ReentrancyGuard {\n    bytes32 private constant CALLBACK_SUCCESS = keccak256(\"ERC3156FlashBorrower.onFlashLoan\");\n",
+        "snippet_end_line": 13,
+        "snippet_start_line": 9
+      },
+      {
+        "file": "SelfiePool.sol",
+        "id": "f2e006a0114de940",
+        "kind": "function",
+        "language": "solidity",
+        "line": 36,
+        "name": "maxFlashLoan",
+        "signature": "function maxFlashLoan(address _token) external view returns (uint256) {",
+        "snippet": "    }\n\n    function maxFlashLoan(address _token) external view returns (uint256) {\n        if (address(token) == _token) {\n            return token.balanceOf(address(this));",
+        "snippet_end_line": 38,
+        "snippet_start_line": 34
+      },
+      {
+        "file": "SelfiePool.sol",
+        "id": "7ee636132f729ed1",
+        "kind": "function",
+        "language": "solidity",
+        "line": 43,
+        "name": "flashFee",
+        "signature": "function flashFee(address _token, uint256) external view returns (uint256) {",
+        "snippet": "    }\n\n    function flashFee(address _token, uint256) external view returns (uint256) {\n        if (address(token) != _token) {\n            revert UnsupportedCurrency();",
+        "snippet_end_line": 45,
+        "snippet_start_line": 41
+      },
+      {
+        "file": "SelfiePool.sol",
+        "id": "bb19f1ed5a9c799b",
+        "kind": "function",
+        "language": "solidity",
+        "line": 50,
+        "name": "flashLoan",
+        "signature": "function flashLoan(IERC3156FlashBorrower _receiver, address _token, uint256 _amount, bytes calldata _data)",
+        "snippet": "    }\n\n    function flashLoan(IERC3156FlashBorrower _receiver, address _token, uint256 _amount, bytes calldata _data)\n        external\n        nonReentrant",
+        "snippet_end_line": 52,
+        "snippet_start_line": 48
+      },
+      {
+        "file": "SelfiePool.sol",
+        "id": "e32f3b8fb11dcb0d",
+        "kind": "function",
+        "language": "solidity",
+        "line": 71,
+        "name": "emergencyExit",
+        "signature": "function emergencyExit(address receiver) external onlyGovernance {",
+        "snippet": "    }\n\n    function emergencyExit(address receiver) external onlyGovernance {\n        uint256 amount = token.balanceOf(address(this));\n        token.transfer(receiver, amount);",
+        "snippet_end_line": 73,
+        "snippet_start_line": 69
+      }
+    ],
+    "token_savings_estimate": {
+      "baseline_tokens_est": 1723,
+      "confidence": "low",
+      "indexed_tokens_est": 1320,
+      "method": "heuristic",
+      "saved_percent_est": 23.39,
+      "saved_tokens_est": 403
+    }
+  },
+  "rebuild_reason": "full_rebuild_first_index",
+  "repo_fingerprint": "sha256:e08d10e242b5ce6a0821fc92ff5187c513af3cb823923b7352511fb6d0f1b5a3",
+  "schema_version": "c35-v1",
+  "source_fingerprint": "sha256:e08d10e242b5ce6a0821fc92ff5187c513af3cb823923b7352511fb6d0f1b5a3",
+  "source_id": "/home/alienblackunix/damn-vulnerable-defi/src/selfie",
+  "source_revision": "revision:unavailable",
+  "source_type": "local_repo",
+  "workspace_id": "voro-brain"
+}

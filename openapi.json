@@ -236,7 +236,7 @@
     }
   },
   "info": {
-    "title": "voro-index-guard",
+    "title": "voro-guard",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",

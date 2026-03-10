@@ -1,0 +1,217 @@
+{
+  "artifact_hash": "93b4f51b62aede861b49943e6ad3eb83093db8c96da64f67637f0eaa568af887",
+  "artifact_id": "4911feed632daec21cbd88b8",
+  "artifact_version": 1,
+  "manifest": {
+    "key_id": null,
+    "signature": "",
+    "signed_at": "2026-03-09T10:24:23.103715+00:00",
+    "signer": "voro-index-guard"
+  },
+  "payload": {
+    "files": [
+      {
+        "approx_tokens": 427,
+        "language": "solidity",
+        "line_count": 54,
+        "path": "UnstoppableMonitor.sol"
+      },
+      {
+        "approx_tokens": 1138,
+        "language": "solidity",
+        "line_count": 134,
+        "path": "UnstoppableVault.sol"
+      }
+    ],
+    "index_meta": {
+      "incremental": {
+        "changed_count": 2,
+        "changed_files": [],
+        "deleted_files": [],
+        "enabled": false,
+        "reused_count": 0,
+        "reused_files": []
+      },
+      "strategy": "local_repo"
+    },
+    "repo_ref": "/home/alienblackunix/damn-vulnerable-defi/src/unstoppable",
+    "stats": {
+      "file_count": 2,
+      "symbol_count": 13
+    },
+    "symbols": [
+      {
+        "file": "UnstoppableMonitor.sol",
+        "id": "da5b8d62bbe364e6",
+        "kind": "contract",
+        "language": "solidity",
+        "line": 12,
+        "name": "UnstoppableMonitor",
+        "signature": "contract UnstoppableMonitor is Owned, IERC3156FlashBorrower {",
+        "snippet": " * @notice Permissioned contract for on-chain monitoring of the vault's flashloan feature.  \n */\ncontract UnstoppableMonitor is Owned, IERC3156FlashBorrower {\n    UnstoppableVault private immutable vault;\n",
+        "snippet_end_line": 14,
+        "snippet_start_line": 10
+      },
+      {
+        "file": "UnstoppableMonitor.sol",
+        "id": "f4e93137dcc8c93d",
+        "kind": "function",
+        "language": "solidity",
+        "line": 23,
+        "name": "onFlashLoan",
+        "signature": "function onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes calldata)",
+        "snippet": "    }\n\n    function onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes calldata)\n        external\n        returns (bytes32)",
+        "snippet_end_line": 25,
+        "snippet_start_line": 21
+      },
+      {
+        "file": "UnstoppableMonitor.sol",
+        "id": "73bacbf5eafe9389",
+        "kind": "function",
+        "language": "solidity",
+        "line": 36,
+        "name": "checkFlashLoan",
+        "signature": "function checkFlashLoan(uint256 amount) external onlyOwner {",
+        "snippet": "    }\n\n    function checkFlashLoan(uint256 amount) external onlyOwner {\n        require(amount > 0);\n",
+        "snippet_end_line": 38,
+        "snippet_start_line": 34
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "ea25b7e799203976",
+        "kind": "contract",
+        "language": "solidity",
+        "line": 16,
+        "name": "UnstoppableVault",
+        "signature": "contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC4626, Pausable {",
+        "snippet": " * An owner can pause the contract and execute arbitrary changes.\n */\ncontract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC4626, Pausable {\n    using SafeTransferLib for ERC20;\n    using FixedPointMathLib for uint256;",
+        "snippet_end_line": 18,
+        "snippet_start_line": 14
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "b063fa3ef0e3f8de",
+        "kind": "function",
+        "language": "solidity",
+        "line": 45,
+        "name": "maxFlashLoan",
+        "signature": "function maxFlashLoan(address _token) public view nonReadReentrant returns (uint256) {",
+        "snippet": "     * @inheritdoc IERC3156FlashLender\n     */\n    function maxFlashLoan(address _token) public view nonReadReentrant returns (uint256) {\n        if (address(asset) != _token) {\n            return 0;",
+        "snippet_end_line": 47,
+        "snippet_start_line": 43
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "28c31f46358c6cae",
+        "kind": "function",
+        "language": "solidity",
+        "line": 56,
+        "name": "flashFee",
+        "signature": "function flashFee(address _token, uint256 _amount) public view returns (uint256 fee) {",
+        "snippet": "     * @inheritdoc IERC3156FlashLender\n     */\n    function flashFee(address _token, uint256 _amount) public view returns (uint256 fee) {\n        if (address(asset) != _token) {\n            revert UnsupportedCurrency();",
+        "snippet_end_line": 58,
+        "snippet_start_line": 54
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "d057eaf16e2835ad",
+        "kind": "function",
+        "language": "solidity",
+        "line": 71,
+        "name": "totalAssets",
+        "signature": "function totalAssets() public view override nonReadReentrant returns (uint256) {",
+        "snippet": "     * @inheritdoc ERC4626\n     */\n    function totalAssets() public view override nonReadReentrant returns (uint256) {\n        return asset.balanceOf(address(this));\n    }",
+        "snippet_end_line": 73,
+        "snippet_start_line": 69
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "f635bd2ab68cc7bf",
+        "kind": "function",
+        "language": "solidity",
+        "line": 78,
+        "name": "flashLoan",
+        "signature": "function flashLoan(IERC3156FlashBorrower receiver, address _token, uint256 amount, bytes calldata data)",
+        "snippet": "     * @inheritdoc IERC3156FlashLender\n     */\n    function flashLoan(IERC3156FlashBorrower receiver, address _token, uint256 amount, bytes calldata data)\n        external\n        returns (bool)",
+        "snippet_end_line": 80,
+        "snippet_start_line": 76
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "b7a5652a7d6b1b4d",
+        "kind": "function",
+        "language": "solidity",
+        "line": 109,
+        "name": "beforeWithdraw",
+        "signature": "function beforeWithdraw(uint256 assets, uint256 shares) internal override nonReentrant {}",
+        "snippet": "     * @inheritdoc ERC4626\n     */\n    function beforeWithdraw(uint256 assets, uint256 shares) internal override nonReentrant {}\n\n    /**",
+        "snippet_end_line": 111,
+        "snippet_start_line": 107
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "4f866538af6530fa",
+        "kind": "function",
+        "language": "solidity",
+        "line": 114,
+        "name": "afterDeposit",
+        "signature": "function afterDeposit(uint256 assets, uint256 shares) internal override nonReentrant whenNotPaused {}",
+        "snippet": "     * @inheritdoc ERC4626\n     */\n    function afterDeposit(uint256 assets, uint256 shares) internal override nonReentrant whenNotPaused {}\n\n    function setFeeRecipient(address _feeRecipient) external onlyOwner {",
+        "snippet_end_line": 116,
+        "snippet_start_line": 112
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "c63bb4cbedc3c1f4",
+        "kind": "function",
+        "language": "solidity",
+        "line": 116,
+        "name": "setFeeRecipient",
+        "signature": "function setFeeRecipient(address _feeRecipient) external onlyOwner {",
+        "snippet": "    function afterDeposit(uint256 assets, uint256 shares) internal override nonReentrant whenNotPaused {}\n\n    function setFeeRecipient(address _feeRecipient) external onlyOwner {\n        if (_feeRecipient != address(this)) {\n            feeRecipient = _feeRecipient;",
+        "snippet_end_line": 118,
+        "snippet_start_line": 114
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "0f5295e1101d2b9e",
+        "kind": "function",
+        "language": "solidity",
+        "line": 124,
+        "name": "execute",
+        "signature": "function execute(address target, bytes memory data) external onlyOwner whenPaused {",
+        "snippet": "\n    // Allow owner to execute arbitrary changes when paused\n    function execute(address target, bytes memory data) external onlyOwner whenPaused {\n        (bool success,) = target.delegatecall(data);\n        require(success);",
+        "snippet_end_line": 126,
+        "snippet_start_line": 122
+      },
+      {
+        "file": "UnstoppableVault.sol",
+        "id": "5cd55cb1c39b07d4",
+        "kind": "function",
+        "language": "solidity",
+        "line": 130,
+        "name": "setPause",
+        "signature": "function setPause(bool flag) external onlyOwner {",
+        "snippet": "\n    // Allow owner pausing/unpausing this contract\n    function setPause(bool flag) external onlyOwner {\n        if (flag) _pause();\n        else _unpause();",
+        "snippet_end_line": 132,
+        "snippet_start_line": 128
+      }
+    ],
+    "token_savings_estimate": {
+      "baseline_tokens_est": 1565,
+      "confidence": "low",
+      "indexed_tokens_est": 820,
+      "method": "heuristic",
+      "saved_percent_est": 47.6,
+      "saved_tokens_est": 745
+    }
+  },
+  "rebuild_reason": "full_rebuild_first_index",
+  "repo_fingerprint": "sha256:fad97b1db0daffe98f4ce9309e01e102a91564b5ddb59d69dd2e321d23c0f8bd",
+  "schema_version": "c35-v1",
+  "source_fingerprint": "sha256:fad97b1db0daffe98f4ce9309e01e102a91564b5ddb59d69dd2e321d23c0f8bd",
+  "source_id": "/home/alienblackunix/damn-vulnerable-defi/src/unstoppable",
+  "source_revision": "revision:unavailable",
+  "source_type": "local_repo",
+  "workspace_id": "voro-brain"
+}

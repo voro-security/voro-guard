@@ -1,0 +1,47 @@
+{
+  "artifact_hash": "ca589bbc02963ed67647820c5f85d559c90f7df309c8aa0711184feddb9be91f",
+  "artifact_id": "debc0c52d9c85e7b7d265f2d",
+  "artifact_version": 1,
+  "manifest": {
+    "key_id": null,
+    "signature": "",
+    "signed_at": "2026-03-09T10:38:28.885660+00:00",
+    "signer": "voro-index-guard"
+  },
+  "payload": {
+    "files": [],
+    "index_meta": {
+      "incremental": {
+        "changed_count": 0,
+        "changed_files": [],
+        "deleted_files": [],
+        "enabled": false,
+        "reused_count": 0,
+        "reused_files": []
+      },
+      "strategy": "local_repo"
+    },
+    "repo_ref": "/home/alienblackunix/data/voro-corpus/damn-vulnerable-defi/src/selfie/SelfiePool.sol",
+    "stats": {
+      "file_count": 0,
+      "symbol_count": 0
+    },
+    "symbols": [],
+    "token_savings_estimate": {
+      "baseline_tokens_est": 0,
+      "confidence": "low",
+      "indexed_tokens_est": 0,
+      "method": "heuristic",
+      "saved_percent_est": 0.0,
+      "saved_tokens_est": 0
+    }
+  },
+  "rebuild_reason": "full_rebuild_first_index",
+  "repo_fingerprint": "sha256:a65951145245edac41315888c30b915e6696f40e9ee3ea9371c1c5e006868b50",
+  "schema_version": "c35-v1",
+  "source_fingerprint": "sha256:a65951145245edac41315888c30b915e6696f40e9ee3ea9371c1c5e006868b50",
+  "source_id": "/home/alienblackunix/data/voro-corpus/damn-vulnerable-defi/src/selfie/SelfiePool.sol",
+  "source_revision": "revision:unavailable",
+  "source_type": "local_repo",
+  "workspace_id": "voro-brain"
+}
