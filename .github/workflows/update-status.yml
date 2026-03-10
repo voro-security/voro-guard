@@ -1,0 +1,177 @@
+name: update-status
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-status:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    env:
+      REPO_NAME: ${{ github.event.repository.name }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+      WHAT_THIS_DOES: ${{ fromJson(steps.parse.outputs.parsed).what_this_does }}
+      SPRINT_NAME: ${{ fromJson(steps.parse.outputs.parsed).sprint }}
+      TASK_DONE: ${{ fromJson(steps.parse.outputs.parsed).task }}
+      WHATS_NEXT: ${{ fromJson(steps.parse.outputs.parsed).whats_next }}
+      SHORT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse PR body
+        id: parse
+        run: |
+          parsed=$(python3 .github/scripts/parse_pr_body.py)
+          echo "parsed=$parsed" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout voro-docs for sprint validation and updates
+        env:
+          VORO_DOCS_PAT: ${{ secrets.VORO_DOCS_PAT }}
+        run: |
+          if [ -z "${VORO_DOCS_PAT:-}" ]; then
+            echo "ERROR: VORO_DOCS_PAT is missing. Requires Contents:RW + Actions:RW on skylily1/voro-docs" >&2
+            exit 1
+          fi
+          git clone "https://x-access-token:${VORO_DOCS_PAT}@github.com/skylily1/voro-docs.git" ../voro-docs
+
+      - name: Validate sprint field
+        id: validate_sprint
+        run: |
+          if [ "$SPRINT_NAME" = "NONE" ]; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -f "../voro-docs/sprints/$SPRINT_NAME" ]; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "valid=false" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on invalid sprint and fail
+        if: steps.validate_sprint.outputs.valid == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sprint = process.env.SPRINT_NAME;
+            const body = `⚠️ Automation paused: Sprint field '${sprint}' does not match any file in voro-docs/sprints/.\nValid values: NONE or an exact filename from that directory.\nPlease edit the PR body and re-run this workflow.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
+            core.setFailed('Invalid sprint field');
+
+      - name: Update STATUS.md in source repo
+        if: steps.validate_sprint.outputs.valid == 'true'
+        run: |
+          python3 .github/scripts/update_status.py \
+            --status-file STATUS.md \
+            --what "$WHAT_THIS_DOES" \
+            --task "$TASK_DONE" \
+            --next "$WHATS_NEXT" \
+            --pr-number "$PR_NUMBER" \
+            --sha "$SHORT_SHA"
+
+      - name: Commit source STATUS.md
+        if: steps.validate_sprint.outputs.valid == 'true'
+        run: |
+          git config user.name "voro-docs-bot"
+          git config user.email "bot@voro.docs"
+          git add STATUS.md
+          git commit -m "auto: update STATUS.md — PR #${PR_NUMBER} merged" || echo "No source status changes"
+          if ! git push origin main; then
+            echo "ERROR: failed to push source STATUS.md. If branch protection blocks direct commits, allow bot writes or switch to bot PR mode." >&2
+            exit 1
+          fi
+
+      - name: Mirror STATUS.md to voro-docs/status/
+        if: steps.validate_sprint.outputs.valid == 'true'
+        env:
+          VORO_DOCS_PAT: ${{ secrets.VORO_DOCS_PAT }}
+        run: |
+          cp STATUS.md "../voro-docs/status/${REPO_NAME}.md"
+          cd ../voro-docs
+          git config user.name "voro-docs-bot"
+          git config user.email "bot@voro.docs"
+          git add "status/${REPO_NAME}.md"
+          git commit -m "auto: sync status/${REPO_NAME}.md — PR #${PR_NUMBER}" || echo "No docs status changes"
+
+          tries=0
+          until [ "$tries" -ge 3 ]; do
+            git pull --rebase origin main || true
+            if git push origin main; then
+              exit 0
+            fi
+            tries=$((tries+1))
+            sleep 5
+          done
+          echo "ERROR: failed to push voro-docs status mirror after 3 attempts" >&2
+          exit 1
+
+      - name: Update sprint in voro-docs (if sprint != NONE)
+        if: steps.validate_sprint.outputs.valid == 'true' && env.SPRINT_NAME != 'NONE'
+        run: |
+          python3 .github/scripts/update_sprint.py \
+            --sprint-file "../voro-docs/sprints/${SPRINT_NAME}" \
+            --task "$TASK_DONE" \
+            --pr-number "$PR_NUMBER" \
+            --sha "$SHORT_SHA" \
+            --what "$WHAT_THIS_DOES" \
+            --archive-dir "../voro-docs/archive/sprints"
+
+          cd ../voro-docs
+          git config user.name "voro-docs-bot"
+          git config user.email "bot@voro.docs"
+          git add sprints archive/sprints
+          git commit -m "auto: update sprint ${SPRINT_NAME} — PR #${PR_NUMBER}" || echo "No sprint changes"
+
+          tries=0
+          until [ "$tries" -ge 3 ]; do
+            git pull --rebase origin main || true
+            if git push origin main; then
+              break
+            fi
+            tries=$((tries+1))
+            sleep 5
+          done
+          if [ "$tries" -ge 3 ]; then
+            echo "ERROR: failed to push sprint changes after 3 attempts" >&2
+            exit 1
+          fi
+
+      - name: Trigger voro-docs aggregate workflow (API first, gh fallback)
+        if: steps.validate_sprint.outputs.valid == 'true'
+        env:
+          VORO_DOCS_PAT: ${{ secrets.VORO_DOCS_PAT }}
+        run: |
+          api_url="https://api.github.com/repos/skylily1/voro-docs/actions/workflows/aggregate.yml/dispatches"
+          payload='{"ref":"main"}'
+          code=$(curl -sS -o /tmp/dispatch.out -w "%{http_code}" \
+            -X POST "$api_url" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${VORO_DOCS_PAT}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d "$payload" || true)
+
+          if [ "$code" = "204" ]; then
+            echo "Dispatch OK via API"
+            exit 0
+          fi
+
+          echo "API dispatch failed (HTTP $code), trying gh fallback"
+          gh auth status || true
+          gh workflow run aggregate.yml --repo skylily1/voro-docs || {
+            echo "ERROR: failed to dispatch aggregate.yml via API and gh fallback" >&2
+            cat /tmp/dispatch.out || true
+            exit 1
+          }
