@@ -1,5 +1,5 @@
 """
-MCP wrapper for voro-index-guard.
+MCP wrapper for voro-guard.
 
 Exposes the index-guard HTTP API as MCP tools via FastMCP (stdio transport).
 Can operate in two modes:
@@ -27,7 +27,7 @@ from typing import Any
 import httpx
 from fastmcp import FastMCP
 
-logger = logging.getLogger("voro-index-guard.mcp")
+logger = logging.getLogger("voro-guard.mcp")
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -171,9 +171,9 @@ async def _lifespan(server: FastMCP):
 
 
 mcp = FastMCP(
-    name="voro-index-guard",
+    name="voro-guard",
     instructions=(
-        "Code symbol index for voro-index-guard. "
+        "Code symbol index for voro-guard. "
         "Use search_symbols to find functions/classes by name, "
         "get_symbol to retrieve full details for a specific symbol ID, "
         "outline_file to list all symbols in a repository artifact, "

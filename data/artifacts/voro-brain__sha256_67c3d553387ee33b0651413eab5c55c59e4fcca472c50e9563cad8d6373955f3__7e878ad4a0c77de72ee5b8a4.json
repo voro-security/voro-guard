@@ -1,0 +1,47 @@
+{
+  "artifact_hash": "46494150d526624877884a455a8e35f537a05a76be2473147552a27df4425a04",
+  "artifact_id": "7e878ad4a0c77de72ee5b8a4",
+  "artifact_version": 1,
+  "manifest": {
+    "key_id": null,
+    "signature": "",
+    "signed_at": "2026-03-09T10:25:33.815624+00:00",
+    "signer": "voro-index-guard"
+  },
+  "payload": {
+    "files": [],
+    "index_meta": {
+      "incremental": {
+        "changed_count": 0,
+        "changed_files": [],
+        "deleted_files": [],
+        "enabled": false,
+        "reused_count": 0,
+        "reused_files": []
+      },
+      "strategy": "local_repo"
+    },
+    "repo_ref": "/home/alienblackunix/data/voro-corpus/smartbugs-curated/dataset/access_control/FibonacciBalance.sol",
+    "stats": {
+      "file_count": 0,
+      "symbol_count": 0
+    },
+    "symbols": [],
+    "token_savings_estimate": {
+      "baseline_tokens_est": 0,
+      "confidence": "low",
+      "indexed_tokens_est": 0,
+      "method": "heuristic",
+      "saved_percent_est": 0.0,
+      "saved_tokens_est": 0
+    }
+  },
+  "rebuild_reason": "full_rebuild_first_index",
+  "repo_fingerprint": "sha256:67c3d553387ee33b0651413eab5c55c59e4fcca472c50e9563cad8d6373955f3",
+  "schema_version": "c35-v1",
+  "source_fingerprint": "sha256:67c3d553387ee33b0651413eab5c55c59e4fcca472c50e9563cad8d6373955f3",
+  "source_id": "/home/alienblackunix/data/voro-corpus/smartbugs-curated/dataset/access_control/FibonacciBalance.sol",
+  "source_revision": "revision:unavailable",
+  "source_type": "local_repo",
+  "workspace_id": "voro-brain"
+}

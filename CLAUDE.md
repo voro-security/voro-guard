@@ -1,152 +1,251 @@
-# voro-index-guard
+# VORO Index Guard — Claude Code Context Anchor
 
-FastAPI code indexing service — indexes repositories and provides symbol search/query capabilities for the VORO ecosystem.
+> **After compaction:** Read this ENTIRE file + `.claude/rules/working-memory.md` before doing anything.
+> **After session resume:** Re-read this file to re-orient.
 
----
+## Identity
 
-## Quick Reference
+- **Repo:** voro-guard (code indexing & artifact trust service)
+- **Role:** Standalone hardened code-index service with artifact signing, symbol extraction, call graph analysis, and token-savings estimates
+- **Language:** Python 3.12, FastAPI, Pydantic, FastMCP
+- **Tests:** 8 unit test modules (`pytest tests/unit/`)
+- **Entry points:** `uvicorn app.main:app` (HTTP API) / `python -m app.mcp_server` (MCP stdio)
+- **Version:** 0.1.0
 
-```bash
-# Run
-uvicorn app.main:app --host 0.0.0.0 --port 8080
+## Architecture Contract
 
-# Run tests
-pytest tests/
+Three product repos + voro-guard as infrastructure service. No cross-repo Python imports. JSON over CLI/HTTP/MCP.
 
-# Environment variables
-CODE_INDEX_SERVICE_TOKEN=<bearer-token>   # Required in production
-TRUST_MODE=strict                          # strict (default) | legacy
-```
+| Repo | Role | Interface |
+|------|------|-----------|
+| **voro-scan** | Scanner CLI (binary: agent-builder) | `agent-builder audit <target> --json` → audit JSON |
+| **voro-brain** | Intelligence layer | Calls voro-guard via MCP stdio subprocess |
+| **voro-web** | Web product | Renders ThreatReports from voro-brain |
+| **voro-guard** | Code index service | HTTP REST API + MCP stdio wrapper |
 
----
+**voro-brain is the primary consumer.** It spawns `python -m app.mcp_server` as a subprocess and communicates via MCP stdio protocol. The MCP server manages a FastAPI subprocess on `127.0.0.1:18765`.
 
-## Module Inventory
+## Architecture Role
 
-| Module | Purpose |
-|--------|---------|
-| `app/main.py` | FastAPI app setup, middleware, router registration |
-| `app/config.py` | Configuration: caps, timeouts, limits |
-| `app/security.py` | Bearer token auth via FastAPI dependency injection |
-| `app/metrics.py` | Prometheus metrics exposition |
-| `app/models/schemas.py` | Pydantic request/response models |
-| `app/routes/index.py` | Index endpoint routes (`/v1/index`, `/v1/get`) |
-| `app/routes/query.py` | Query/search endpoint routes (`/v1/search`, `/v1/query`, `/v1/outline`) |
-| `app/core/artifacts.py` | Artifact envelope creation and validation |
-| `app/core/identity.py` | Source identity and fingerprinting |
-| `app/core/indexer.py` | Core indexing logic |
-| `app/core/ingest.py` | Source ingestion pipeline |
-| `app/core/parser.py` | Symbol extraction (8 languages) |
-| `app/core/safety.py` | Input validation, trust mode enforcement |
-| `app/core/signing.py` | HMAC-SHA256 signing (Ed25519 migration planned) |
-
-**Scale:** ~1,365 lines of app code, ~504 lines of test code, 6 test files
-
----
-
-## API Reference
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/health` | None | Health check |
-| POST | `/v1/index` | Bearer | Index a source (github, git, local_repo, http_docs, feed, snapshot) |
-| POST | `/v1/search` | Bearer | Search indexed content |
-| GET | `/v1/get/{source_id}` | Bearer | Get indexed source by ID |
-| POST | `/v1/outline` | Bearer | Get code outline/structure |
-| POST | `/v1/query` | Bearer | Query indexed content |
-| GET | `/v1/metrics` | None | Prometheus metrics |
-
----
-
-## Configuration
-
-### Caps and Limits (app/config.py)
-
-| Setting | Value |
-|---------|-------|
-| `max_files` | 400 |
-| `max_file_size_bytes` | 524288 (512 KB) |
-| `max_symbols_per_file` | 200 |
-| `index_timeout` | 30s |
-
-### Symbol Extraction Languages
-
-Python, JavaScript, TypeScript, Go, Rust, Java, PHP, Solidity (8 languages)
-
-### Artifact Envelope Schema (`c35-v1`)
+voro-guard is a **service** called by voro-brain via MCP stdio subprocess. It is never imported as a Python module by any other repo.
 
 ```
-schema_version: c35-v1
-workspace_id:   <id>
-source_fingerprint: <hash>
-artifact_hash:  <hash>
-manifest:
-  signer:    <signer-id>
-  signature: <hmac-sha256>
-payload:
-  files:   [...]
-  symbols: [...]
-  stats:   {...}
+voro-brain (ExploitabilityAssessor)
+  → spawns: python -m app.mcp_server (stdio)
+    → MCP server starts managed FastAPI subprocess on 127.0.0.1:18765
+      → index_repo() → POST /v1/index → ArtifactEnvelope
+      → search_symbols() → POST /v1/search → SymbolMatch[]
+      → get_symbol() → POST /v1/get → Symbol
+      → outline_file() → POST /v1/outline → FileOutline
+      → callgraph() → POST /v1/callgraph → CallGraph
 ```
 
-### Incremental Rebuilds
+## HTTP API Contract
 
-GitHub blob SHA tracking for incremental rebuilds (Phase B — implemented).
+| Method | Path | Purpose | Auth |
+|--------|------|---------|------|
+| GET | `/health` | Service health check | No |
+| POST | `/v1/index` | Index a repository, create signed artifact | Bearer |
+| POST | `/v1/search` | Search symbols by query | Bearer |
+| POST | `/v1/get` | Get specific symbol by ID | Bearer |
+| POST | `/v1/outline` | List all files and symbols in artifact | Bearer |
+| POST | `/v1/callgraph` | Build Solidity call graph from file | Bearer |
+| GET | `/v1/metrics` | Service metrics snapshot | Bearer |
 
----
+## MCP Tools (exposed via stdio)
+
+| Tool | Maps To | Purpose |
+|------|---------|---------|
+| `index_repo(source_type, source_id, workspace_id, source_revision)` | POST `/v1/index` | Index a repository |
+| `search_symbols(query, workspace_id, artifact_id, source_fingerprint)` | POST `/v1/search` | Search symbols |
+| `get_symbol(symbol_id, workspace_id, artifact_id, source_fingerprint)` | POST `/v1/get` | Get symbol detail |
+| `outline_file(workspace_id, artifact_id, source_fingerprint)` | POST `/v1/outline` | File/symbol outline |
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CODE_INDEX_TRUST_MODE` | `strict` | `strict` (signed verification) or `legacy` (unsigned allowed) |
+| `CODE_INDEX_SIGNER` | `voro-index-guard` | Signing identity |
+| `CODE_INDEX_SIGNING_KEY` | `` | HMAC secret for artifact signing (required in strict mode) |
+| `CODE_INDEX_SERVICE_TOKEN` | `` | Bearer token for HTTP API auth |
+| `CODE_INDEX_GITHUB_TOKEN` | `` | GitHub PAT for private repos |
+| `CODE_INDEX_MAX_FILES` | `400` | Max files to index per repo |
+| `CODE_INDEX_MAX_FILE_SIZE_BYTES` | `512000` | Max file size (500 KB) |
+| `CODE_INDEX_MAX_SYMBOLS_PER_FILE` | `200` | Max symbols per file |
+| `CODE_INDEX_INDEX_TIMEOUT_SECONDS` | `30` | Indexing timeout |
+| `ARTIFACT_ROOT` | `./data/artifacts` | Artifact storage directory |
+
+## Repo Structure
+
+```
+voro-guard/
+├── app/                              # Main application (~1,541 LOC)
+│   ├── main.py                       # FastAPI app setup (15L)
+│   ├── config.py                     # Settings/env config (19L)
+│   ├── security.py                   # Bearer token auth (19L)
+│   ├── metrics.py                    # Request/success/deny counters (74L)
+│   ├── mcp_server.py                 # FastMCP stdio wrapper + managed subprocess (331L)
+│   ├── models/
+│   │   └── schemas.py                # Pydantic request/response models (160L)
+│   ├── routes/
+│   │   ├── index.py                  # POST /v1/index, artifact signing (125L)
+│   │   └── query.py                  # Search/get/outline/metrics/callgraph (160L)
+│   └── core/                         # Business logic
+│       ├── artifacts.py              # Artifact persistence & verification (130L)
+│       ├── callgraph.py              # Solidity call graph analysis (209L)
+│       ├── identity.py               # Source fingerprinting (71L)
+│       ├── indexer.py                # GitHub & local repo indexing (263L)
+│       ├── ingest.py                 # File discovery & reading (61L)
+│       ├── parser.py                 # Symbol extraction, 8 languages (169L)
+│       ├── safety.py                 # Symlink/secret/binary checks (70L)
+│       ├── signing.py                # HMAC-SHA256 signing (22L)
+│       └── store.py                  # Symbol indexing & querying (113L)
+├── data/
+│   └── artifacts/                    # Persisted signed artifacts (JSON)
+├── docs/
+│   └── DEPLOY_ZEABUR.md              # Production deployment guide
+├── scripts/
+│   └── smoke_prod.sh                 # Production smoke test
+├── tests/
+│   └── unit/                         # 8 test modules
+│       ├── test_auth.py              # Bearer token auth
+│       ├── test_callgraph.py         # Solidity call graph
+│       ├── test_github_indexer.py    # GitHub repo indexing
+│       ├── test_incremental_github_phaseb.py  # Incremental rebuild
+│       ├── test_indexer_runtime.py   # Local indexing + querying
+│       ├── test_mcp_server.py        # MCP server lifecycle
+│       ├── test_perf_caps.py         # Performance limits
+│       └── test_trust_guard.py       # Artifact trust verification
+├── README.md
+├── requirements.txt                  # Python deps (FastAPI, uvicorn, httpx, fastmcp, pydantic)
+├── Dockerfile                        # Python 3.12-slim
+└── openapi.json                      # Auto-generated OpenAPI 3.0 schema
+```
+
+## Key Data Contracts
+
+### ArtifactEnvelope (output of POST /v1/index)
+
+```json
+{
+  "schema_version": "c35-v1",
+  "workspace_id": "ws1",
+  "source_type": "github|git|local_repo|snapshot",
+  "source_id": "owner/repo or path",
+  "source_revision": "commit_sha",
+  "source_fingerprint": "sha256:...",
+  "repo_fingerprint": "sha256:...",
+  "artifact_id": "24-char sha256 prefix",
+  "artifact_version": 3,
+  "rebuild_reason": "incremental_changed_files",
+  "artifact_hash": "sha256 hex",
+  "manifest": {
+    "signer": "voro-index-guard",
+    "signed_at": "ISO8601",
+    "signature": "hmac_hex",
+    "key_id": null
+  },
+  "payload": {
+    "files": [{"path", "language", "line_count", "approx_tokens", "blob_sha"}],
+    "symbols": [{"id", "kind", "name", "file", "line", "language", "snippet", "visibility", "payable", "reachable"}],
+    "stats": {"file_count", "symbol_count"},
+    "token_savings_estimate": {"baseline_tokens_est", "indexed_tokens_est", "saved_tokens_est", "saved_percent_est"},
+    "index_meta": {"strategy", "incremental": {"changed_files", "reused_files", "deleted_files"}}
+  }
+}
+```
+
+### Symbol Fields (cross-repo contract with voro-brain)
+
+| Field | Type | Note |
+|-------|------|------|
+| `id` | string | 24-char SHA256 prefix |
+| `kind` | string | function, class, interface, contract |
+| `name` | string | Symbol name |
+| `file` | string | File path within repo |
+| `line` | int | Line number |
+| `language` | string | python, javascript, typescript, go, rust, java, php, solidity |
+| `snippet` | string | Source code context (±2 lines) |
+| `visibility` | string | Solidity only: public, external, internal, private |
+| `payable` | bool | Solidity only |
+| `reachable` | bool | Solidity only — from call graph analysis |
+
+## Supported Languages
+
+Python, JavaScript, TypeScript, Go, Rust, Java, PHP, Solidity
+
+Symbol extraction is regex-based (line-by-line parsing, no AST). Solidity has additional call graph analysis with visibility/reachability metadata.
 
 ## Security Model
 
-### Bearer Token Auth
+1. **Artifact Signing:** HMAC-SHA256 over canonical JSON (deterministic field ordering)
+2. **Trust Modes:** `strict` (signature required) vs `legacy` (unsigned allowed, dev only)
+3. **Bearer Token Auth:** Required for all /v1/* endpoints when `CODE_INDEX_SERVICE_TOKEN` set
+4. **Path Safety:** Symlink escape detection, secret file filtering, binary exclusion
+5. **Identity Verification:** workspace_id + source_fingerprint + artifact_id verified on queries
 
-- Controlled by `CODE_INDEX_SERVICE_TOKEN` environment variable
-- Enforced via FastAPI dependency injection in `app/security.py`
-- If `CODE_INDEX_SERVICE_TOKEN` is unset, auth is skipped (development mode only)
-- **Production requirement:** `CODE_INDEX_SERVICE_TOKEN` must always be set
+## DO NOT
 
-### Signing
+- Import this repo's code from any other VORO repo — use MCP/HTTP only
+- Disable strict trust mode in production
+- Store artifacts without signing in production
+- Expose the signing key in logs, tests, or config files
+- Add AST parsing — regex extraction is intentional for speed and portability
+- Break the MCP stdio contract that voro-brain depends on
+- Modify the ArtifactEnvelope schema without updating voro-brain consumers
 
-- HMAC-SHA256 via `app/core/signing.py`
-- Ed25519 migration is planned and documented — do not build new features on HMAC-SHA256
+## Build & Run
 
-### Trust Modes
-
-| Mode | Behavior |
-|------|---------|
-| `strict` | Default. Fail-closed. Rejects untrusted input. |
-| `legacy` | Permissive. For backward compatibility only. Never use in new production paths. |
-
----
-
-## DO NOTs
-
-- Do NOT disable strict trust mode in production
-- Do NOT skip bearer token auth in production (`CODE_INDEX_SERVICE_TOKEN` must be set)
-- Do NOT exceed caps without updating `app/config.py`
-- Do NOT use HMAC-SHA256 for new signing features — plan for Ed25519 migration
-- Do NOT import from sibling VORO repos — JSON over CLI/HTTP only
-- Do NOT put business logic in route handlers — keep it in `app/core/`
-
----
-
-## Architectural Reference
-
-### Current State (as of 2026-03-08)
-
-- **Service:** Operational FastAPI service on port 8080
-- **Signing:** HMAC-SHA256 (Ed25519 migration pending)
-- **Symbol extraction:** 8 languages, up to 200 symbols/file
-- **Trust model:** strict (default), legacy (backward compat)
-- **Auth:** Bearer token; dev mode skips auth when token unset
-- **Incremental rebuilds:** GitHub blob SHA tracking implemented (Phase B)
-- **Commits:** 13 commits on main
-
-### Role in VORO Ecosystem
-
-voro-index-guard is a standalone service. It does not import from any other VORO repo. Other services communicate with it via JSON over HTTP.
-
+```bash
+pip install -r requirements.txt                         # Install deps
+pytest tests/unit/                                      # Run tests
+uvicorn app.main:app --host 0.0.0.0 --port 8080       # Run HTTP API
+python -m app.mcp_server                                # Run MCP stdio server
+docker build -t voro-guard . && docker run \
+  -e CODE_INDEX_SIGNING_KEY=... \
+  -e CODE_INDEX_SERVICE_TOKEN=... \
+  -p 8080:8080 voro-guard                              # Docker
 ```
-voro-* services
-  → POST /v1/index  → voro-index-guard indexes code
-  → POST /v1/search → returns symbol/content matches
-  → POST /v1/query  → returns structured query results
-```
+
+## Deployment
+
+Production via Zeabur (see `docs/DEPLOY_ZEABUR.md`):
+- Docker image from Dockerfile
+- Port 8080 exposed
+- Required env vars: `CODE_INDEX_SERVICE_TOKEN`, `CODE_INDEX_SIGNING_KEY`, `CODE_INDEX_TRUST_MODE=strict`
+- Persistent volume at `/data/artifacts`
+- Health check: `GET /health` → 200
+
+## Current State
+
+- **Branch:** `main` at `45cdb1d`
+- Phase 2.0 (MCP wrapper) merged
+- Phase 3.0 (Solidity call graphs with visibility) merged (#6)
+- Known issues: voro-index-guard#5 (visibility modifier parsing for reachability)
+- Integration: voro-brain calls via `src/exploitability/index_guard_client.py` (gated by `VORO_EXPLOITABILITY=1`)
+
+## Cross-Tool Architectural Constraints
+
+These rules apply to all AI tools (Claude, Gemini, Codex) operating in this repo.
+
+### Architectural Boundaries (Strict Decoupling)
+- No cross-repo imports. MCP/HTTP only.
+- voro-brain is the consumer — do not modify voro-brain from this repo.
+
+### Security Guardrails
+- Never commit signing keys, service tokens, or GitHub PATs to version control.
+- Never print or expose env vars containing keys/tokens.
+- Treat all artifact data and signing material as confidential.
+
+### Workspace Canonical Path
+
+This repo's canonical root is `/home/alienblackunix/dev/voro/voro-guard`. If your working directory is not this path, stop and ask.
+
+## Compaction Recovery
+
+1. Read this file (you're doing that now)
+2. Read `.claude/rules/working-memory.md` for current task
+3. Check `git diff` and `git log --oneline -10`
+4. Run `pytest tests/unit/` to verify nothing is broken
+5. Resume from working-memory.md current task

@@ -1,31 +1,31 @@
-# Working Memory — voro-index-guard
+# Working Memory — voro-guard
 
-> Keep under 40 lines. Current state ONLY.
+> **What this is**: Live session state. Auto-loaded into every Claude session prompt.
+> **Rules**: Keep under 40 lines. Current state ONLY — no history, no changelogs.
+> Update this file at session START (set branch/task) and session END (set result).
 
 ## Current State
 
-- **Branch**: main
-- **Status**: Operational. No active development task.
-- **App**: FastAPI on port 8080, 1,365 LOC, 504 test LOC
-- **Tests**: 6 test files
+- **Branch**: `main` @ `45cdb1d`
+- **Task**: Docs bootstrap — CLAUDE.md + .claude/rules/ created
+- **Tests**: 8 unit test modules in tests/unit/
 
-## Architecture
+## Recent Completed Work
 
-- Standalone FastAPI code indexing service
-- HMAC-SHA256 signing (Ed25519 migration planned)
-- 8-language symbol extraction
-- Strict trust mode (default)
+- Phase 2.0: MCP stdio wrapper (PR #4, merged)
+- Phase 3.0: Solidity call graph + visibility parsing (PR #6, merged)
+- Docs bootstrap: CLAUDE.md, conventions.md, working-memory.md created (2026-03-10)
+
+## Open Issues
+
+- #5: Parse Solidity visibility modifiers for reachability (referenced by voro-brain Phase 2.4)
 
 ## Blockers
 
-- None
-
-## Role Lock
-
-- Codex: coding and testing
-- Claude: analysis, planning, GitHub operations
+- voro-brain Phase 2.4 re-eval blocked by #5 (visibility modifiers)
 
 ## References
 
-- Architectural Reference: `CLAUDE.md`
-- Cross-repo roadmap: `~/.claude/VORO_PRODUCT_MASTER_PLAN.md`
+- Architecture: `CLAUDE.md`
+- Deployment: `docs/DEPLOY_ZEABUR.md`
+- API schema: `openapi.json`

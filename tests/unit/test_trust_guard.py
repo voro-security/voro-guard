@@ -28,7 +28,7 @@ def _write_json(path: Path, obj: dict) -> None:
 def setup_function() -> None:
     settings.trust_mode = "strict"
     settings.signing_key = "dev-signing-key"
-    settings.artifact_root = "/tmp/voro-index-guard-tests"
+    settings.artifact_root = "/tmp/voro-guard-tests"
     root = Path(settings.artifact_root)
     if root.exists():
         for p in root.rglob("*"):

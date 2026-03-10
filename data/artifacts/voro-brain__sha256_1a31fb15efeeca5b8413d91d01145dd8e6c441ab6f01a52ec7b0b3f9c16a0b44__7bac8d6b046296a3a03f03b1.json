@@ -1,0 +1,47 @@
+{
+  "artifact_hash": "0ed7efef4e0898cfa1b207c77c779e59564bb8d17f55bf23d185a37405b9268d",
+  "artifact_id": "7bac8d6b046296a3a03f03b1",
+  "artifact_version": 1,
+  "manifest": {
+    "key_id": null,
+    "signature": "",
+    "signed_at": "2026-03-09T10:36:53.730489+00:00",
+    "signer": "voro-index-guard"
+  },
+  "payload": {
+    "files": [],
+    "index_meta": {
+      "incremental": {
+        "changed_count": 0,
+        "changed_files": [],
+        "deleted_files": [],
+        "enabled": false,
+        "reused_count": 0,
+        "reused_files": []
+      },
+      "strategy": "local_repo"
+    },
+    "repo_ref": "/home/alienblackunix/data/voro-corpus/ethernaut/contracts/src/levels/Delegation.sol",
+    "stats": {
+      "file_count": 0,
+      "symbol_count": 0
+    },
+    "symbols": [],
+    "token_savings_estimate": {
+      "baseline_tokens_est": 0,
+      "confidence": "low",
+      "indexed_tokens_est": 0,
+      "method": "heuristic",
+      "saved_percent_est": 0.0,
+      "saved_tokens_est": 0
+    }
+  },
+  "rebuild_reason": "full_rebuild_first_index",
+  "repo_fingerprint": "sha256:1a31fb15efeeca5b8413d91d01145dd8e6c441ab6f01a52ec7b0b3f9c16a0b44",
+  "schema_version": "c35-v1",
+  "source_fingerprint": "sha256:1a31fb15efeeca5b8413d91d01145dd8e6c441ab6f01a52ec7b0b3f9c16a0b44",
+  "source_id": "/home/alienblackunix/data/voro-corpus/ethernaut/contracts/src/levels/Delegation.sol",
+  "source_revision": "revision:unavailable",
+  "source_type": "local_repo",
+  "workspace_id": "voro-brain"
+}
