@@ -15,6 +15,11 @@ def _normalize_task_line(line: str) -> str:
     return s.strip()
 
 
+def _fuzzy(s: str) -> str:
+    """Whitespace-normalized, case-insensitive key for comparison."""
+    return re.sub(r"\s+", " ", s.strip()).lower()
+
+
 def _canonical_status() -> str:
     return """# STATUS
 
@@ -45,12 +50,15 @@ def update_status(status_file: Path, what: str, task: str, whats_next: str, pr_n
     in_progress, next_sec, done_sec = _split_sections(existing)
 
     in_progress_lines = [ln for ln in in_progress.splitlines() if ln.strip()]
-    if task.strip().upper() != "NONE":
-        in_progress_lines = [ln for ln in in_progress_lines if _normalize_task_line(ln) != task.strip()]
-
     next_lines = [ln for ln in next_sec.splitlines() if ln.strip()]
+
+    if task.strip().upper() != "NONE":
+        task_key = _fuzzy(task)
+        in_progress_lines = [ln for ln in in_progress_lines if _fuzzy(_normalize_task_line(ln)) != task_key]
+        next_lines = [ln for ln in next_lines if _fuzzy(_normalize_task_line(ln)) != task_key]
+
     if whats_next.strip().upper() != "NONE":
-        if whats_next.strip() not in [_normalize_task_line(x) for x in next_lines]:
+        if _fuzzy(whats_next) not in [_fuzzy(_normalize_task_line(x)) for x in next_lines]:
             next_lines.append(f"- {whats_next.strip()}")
 
     done_lines = done_sec.splitlines()
