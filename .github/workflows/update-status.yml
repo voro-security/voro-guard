@@ -16,10 +16,6 @@ jobs:
       REPO_NAME: ${{ github.event.repository.name }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_BODY: ${{ github.event.pull_request.body }}
-      WHAT_THIS_DOES: ${{ fromJson(steps.parse.outputs.parsed).what_this_does }}
-      SPRINT_NAME: ${{ fromJson(steps.parse.outputs.parsed).sprint }}
-      TASK_DONE: ${{ fromJson(steps.parse.outputs.parsed).task }}
-      WHATS_NEXT: ${{ fromJson(steps.parse.outputs.parsed).whats_next }}
       SHORT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
     steps:
       - name: Checkout source repo
@@ -32,6 +28,24 @@ jobs:
         run: |
           parsed=$(python3 .github/scripts/parse_pr_body.py)
           echo "parsed=$parsed" >> "$GITHUB_OUTPUT"
+
+      - name: Export parsed fields to env
+        run: |
+          python3 -c "
+          import json, os
+          p = json.loads(os.environ['PARSED'])
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              for gha_key, json_key in [
+                  ('WHAT_THIS_DOES', 'what_this_does'),
+                  ('SPRINT_NAME', 'sprint'),
+                  ('TASK_DONE', 'task'),
+                  ('WHATS_NEXT', 'whats_next'),
+              ]:
+                  v = p[json_key]
+                  f.write(f'{gha_key}<<__EOF__\n{v}\n__EOF__\n')
+          "
+        env:
+          PARSED: ${{ steps.parse.outputs.parsed }}
 
       - name: Checkout voro-docs for sprint validation and updates
         env:
