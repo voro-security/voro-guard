@@ -1,19 +1,82 @@
-# voro-guard
+# VORO Guard
+
 Standalone hardened code-index service with artifact trust verification and token-savings estimates.
 
-## Endpoints
-- `GET /health`
-- `POST /v1/index`
-- `POST /v1/search`
-- `POST /v1/get`
-- `POST /v1/outline`
-- `GET /v1/metrics`
+## What This Repo Is
 
-## Production Defaults
-- Fail-closed trust mode (`CODE_INDEX_TRUST_MODE=strict`)
-- Signed artifact verification required
-- Bearer token required when `CODE_INDEX_SERVICE_TOKEN` is set
-- Workspace + repo fingerprint identity enforcement
+`voro-guard` is the fleet code-index and artifact-trust service.
 
-## Deploy
-See [docs/DEPLOY_ZEABUR.md](docs/DEPLOY_ZEABUR.md).
+It indexes repositories, extracts symbols across supported languages, builds Solidity call graphs, and exposes that data through an HTTP API and MCP stdio wrapper.
+
+This repo is primarily for:
+
+- engineers maintaining symbol extraction, signing, and artifact trust
+- `voro-brain` integration work for exploitability and reachability analysis
+- operators deploying the service in local or hosted environments
+
+## Quick Start
+
+Prerequisites:
+
+- Python 3.12
+- `pip`
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pytest tests/unit/
+```
+
+Success looks like:
+
+- unit tests pass
+- `/health` responds locally
+- MCP server starts without crashing
+
+## Run
+
+```bash
+# HTTP API
+uvicorn app.main:app --host 0.0.0.0 --port 8080
+
+# MCP stdio server
+python -m app.mcp_server
+
+# Production smoke test
+./scripts/smoke_prod.sh https://<service-domain> <CODE_INDEX_SERVICE_TOKEN>
+```
+
+## Test
+
+```bash
+pytest tests/unit/
+curl -sS http://127.0.0.1:8080/health
+```
+
+Use the health check as a quick runtime validation after API or config changes.
+
+## Fleet Role
+
+- `voro-guard` serves code intelligence and signed artifacts
+- `voro-brain` is the primary consumer via MCP stdio
+- `voro-web` depends on `voro-brain` output rather than talking to `voro-guard` directly
+
+Primary interfaces:
+
+- HTTP API on `/health`, `/v1/index`, `/v1/search`, `/v1/get`, `/v1/outline`, `/v1/callgraph`, `/v1/metrics`
+- MCP stdio wrapper via `python -m app.mcp_server`
+
+## Key Paths
+
+- `app/main.py` — FastAPI app setup
+- `app/mcp_server.py` — MCP stdio wrapper and managed subprocess logic
+- `app/routes/` — HTTP route handlers
+- `app/core/` — indexing, parsing, signing, artifacts, call graphs
+- `docs/CODEBASE_MAP.md` — generated structural map
+
+## Documentation
+
+- `CLAUDE.md` — agent entrypoint and architecture constraints
+- `docs/CODEBASE_MAP.md` — generated codebase map
+- `docs/DEPLOY_ZEABUR.md` — deployment guide

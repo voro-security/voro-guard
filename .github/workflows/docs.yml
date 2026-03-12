@@ -14,6 +14,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate docs contract
+        run: |
+          python3 scripts/validate_docs_contract.py
+
       - name: Enforce CLAUDE.md updates for structural changes
         run: |
           BASE="${GITHUB_BASE_REF:-main}"

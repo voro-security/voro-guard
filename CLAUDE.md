@@ -76,6 +76,18 @@ voro-brain (ExploitabilityAssessor)
 | `CODE_INDEX_INDEX_TIMEOUT_SECONDS` | `30` | Indexing timeout |
 | `ARTIFACT_ROOT` | `./data/artifacts` | Artifact storage directory |
 
+## Validation
+
+Run these after API, MCP, signing, or artifact-schema changes:
+
+```bash
+pytest tests/unit/
+uvicorn app.main:app --host 0.0.0.0 --port 8080
+python -m app.mcp_server
+```
+
+## Architectural Reference (eliminates re-exploration)
+
 ## Repo Structure
 
 ```
@@ -185,7 +197,7 @@ Symbol extraction is regex-based (line-by-line parsing, no AST). Solidity has ad
 4. **Path Safety:** Symlink escape detection, secret file filtering, binary exclusion
 5. **Identity Verification:** workspace_id + source_fingerprint + artifact_id verified on queries
 
-## DO NOT
+## Guardrails
 
 - Import this repo's code from any other VORO repo — use MCP/HTTP only
 - Disable strict trust mode in production
@@ -194,6 +206,19 @@ Symbol extraction is regex-based (line-by-line parsing, no AST). Solidity has ad
 - Add AST parsing — regex extraction is intentional for speed and portability
 - Break the MCP stdio contract that voro-brain depends on
 - Modify the ArtifactEnvelope schema without updating voro-brain consumers
+
+## Cross-Repo Awareness
+
+- `voro-brain` is the primary consumer and calls this repo via MCP stdio subprocess
+- `voro-web` does not consume this service directly; it depends on `voro-brain` output instead
+- Artifact and symbol contracts must remain stable for downstream exploitability logic
+
+## Session Start
+
+1. `git status --short --branch`
+2. Read this file and `.claude/rules/working-memory.md`
+3. Check whether the task touches HTTP API, MCP wrapper, or artifact schema
+4. Run `pytest tests/unit/` before closing structural changes
 
 ## Build & Run
 
