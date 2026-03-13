@@ -11,6 +11,7 @@ from app.core.identity import (
 
 class IndexRequest(BaseModel):
     workspace_id: str = Field(min_length=1)
+    index_kind: Literal["code", "docs"] = "code"
     source_type: Optional[str] = None
     source_id: Optional[str] = None
     source_revision: Optional[str] = None

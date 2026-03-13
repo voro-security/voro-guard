@@ -54,8 +54,11 @@ def compute_artifact_identity(
     workspace_id: str,
     source_type: str,
     source_id: str,
+    artifact_kind: str = "code",
 ) -> str:
     base = f"{workspace_id}:{source_type}:{source_id}"
+    if artifact_kind != "code":
+        base += f":{artifact_kind}"
     return sha256_hex(base)[:24]
 
 

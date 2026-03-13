@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+from app.core.docs_ingest import discover_local_docs
+from app.core.docs_parser import parse_markdown_document
 
 
 def build_docs_payload(
@@ -26,8 +30,39 @@ def build_docs_payload(
             "document_count": len(documents),
             "section_count": len(sections),
         },
+        "token_savings_estimate": {
+            "baseline_tokens_est": 0,
+            "indexed_tokens_est": 0,
+            "saved_tokens_est": 0,
+            "saved_percent_est": 0.0,
+            "method": "heuristic",
+            "confidence": "low",
+        },
         "index_meta": {
             "strategy": "docs_markdown_v1",
             "discovery_mode": discovery_mode,
         },
     }
+
+
+def build_docs_payload_from_repo(
+    repo_ref: str | None,
+    default_visibility: str = "public",
+) -> dict[str, Any]:
+    if not repo_ref:
+        return build_docs_payload("", [])
+
+    root = Path(repo_ref).expanduser().resolve()
+    if not root.exists() or not root.is_dir():
+        raise ValueError("docs_source_unsupported")
+
+    docs = discover_local_docs(root)
+    parsed_documents = [
+        parse_markdown_document(
+            path.relative_to(root).as_posix(),
+            path.read_text(encoding="utf-8"),
+            default_visibility=default_visibility,
+        )
+        for path in docs
+    ]
+    return build_docs_payload(str(root), parsed_documents)
