@@ -31,7 +31,9 @@ def test_solidity_visibility_reachability_mapping() -> None:
     assert functions["delegate"].visibility == "public"
     assert functions["delegate"].reachable is True
     assert functions["updateBalance"].visibility == "internal"
-    assert functions["updateBalance"].reachable is False
+    assert functions["updateBalance"].reachable is True  # transitively reachable via delegate/ping
+    assert functions["transfer"].visibility == "private"
+    assert functions["transfer"].reachable is True  # transitively reachable via updateBalance
     assert functions["ping"].visibility == "external"
     assert functions["ping"].reachable is True
     assert functions["fallback"].reachable is True
@@ -42,7 +44,7 @@ def test_extract_symbols_includes_solidity_reachability_fields() -> None:
     functions = {s["name"]: s for s in symbols if s.get("kind") == "function"}
 
     assert functions["delegate"]["reachable"] is True
-    assert functions["updateBalance"]["reachable"] is False
+    assert functions["updateBalance"]["reachable"] is True
     assert functions["ping"]["reachable"] is True
     assert functions["fallback"]["reachable"] is True
 
@@ -84,3 +86,45 @@ def test_callgraph_unknown_entry_function_returns_graceful_error(tmp_path: Path)
     )
     assert res["entry_points"] == []
     assert "error" in res
+
+
+def test_no_explicit_visibility_defaults_to_public() -> None:
+    source = (
+        "pragma solidity ^0.4.24;\n"
+        "contract Legacy {\n"
+        "  function noVisibility() { }\n"
+        "}\n"
+    )
+    functions = parse_solidity_functions(source)
+    assert functions["noVisibility"].visibility == "public"
+    assert functions["noVisibility"].reachable is True
+
+
+def test_transitive_reachability_through_internal_chain() -> None:
+    source = (
+        "contract Chain {\n"
+        "  function entry() public { mid(); }\n"
+        "  function mid() internal { deep(); }\n"
+        "  function deep() private { }\n"
+        "  function isolated() internal { }\n"
+        "}\n"
+    )
+    functions = parse_solidity_functions(source)
+    assert functions["entry"].reachable is True
+    assert functions["mid"].reachable is True  # called by entry (public)
+    assert functions["deep"].reachable is True  # called by mid, transitively reachable
+    assert functions["isolated"].reachable is False  # no public caller
+
+
+def test_circular_calls_do_not_infinite_loop() -> None:
+    source = (
+        "contract Circular {\n"
+        "  function a() public { b(); }\n"
+        "  function b() internal { c(); }\n"
+        "  function c() internal { b(); }\n"
+        "}\n"
+    )
+    functions = parse_solidity_functions(source)
+    assert functions["a"].reachable is True
+    assert functions["b"].reachable is True
+    assert functions["c"].reachable is True
