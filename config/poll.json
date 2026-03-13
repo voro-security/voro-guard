@@ -1,0 +1,46 @@
+{
+  "repos": [
+    {
+      "workspace_id": "voro",
+      "source_type": "github",
+      "source_id": "skylily1/voro-scan",
+      "interval_seconds": 300
+    },
+    {
+      "workspace_id": "voro",
+      "source_type": "github",
+      "source_id": "skylily1/voro-brain",
+      "interval_seconds": 300
+    },
+    {
+      "workspace_id": "voro",
+      "source_type": "github",
+      "source_id": "skylily1/voro-web",
+      "interval_seconds": 300
+    },
+    {
+      "workspace_id": "voro",
+      "source_type": "github",
+      "source_id": "skylily1/voro-core",
+      "interval_seconds": 300
+    },
+    {
+      "workspace_id": "voro",
+      "source_type": "github",
+      "source_id": "skylily1/voro-dash",
+      "interval_seconds": 300
+    },
+    {
+      "workspace_id": "voro",
+      "source_type": "github",
+      "source_id": "skylily1/voro-guard",
+      "interval_seconds": 300
+    },
+    {
+      "workspace_id": "voro",
+      "source_type": "github",
+      "source_id": "skylily1/voro-docs",
+      "interval_seconds": 300
+    }
+  ]
+}
