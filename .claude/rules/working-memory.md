@@ -1,31 +1,26 @@
 # Working Memory — voro-guard
 
-> **What this is**: Live session state. Auto-loaded into every Claude session prompt.
-> **Rules**: Keep under 40 lines. Current state ONLY — no history, no changelogs.
-> Update this file at session START (set branch/task) and session END (set result).
+> Keep under 40 lines. Current state ONLY.
 
-## Current State
+## Current State (2026-03-13)
 
-- **Branch**: `main` @ `45cdb1d`
-- **Task**: Docs bootstrap — CLAUDE.md + .claude/rules/ created
-- **Tests**: 8 unit test modules in tests/unit/
+- **Branch**: `main` @ `a21d941`
+- **Tests**: 52/52 pass (full green baseline)
+- **Uncommitted**: `app/core/store.py` outline fix (include visibility/reachable/payable)
 
-## Recent Completed Work
+## Pending Commit
 
-- Phase 2.0: MCP stdio wrapper (PR #4, merged)
-- Phase 3.0: Solidity call graph + visibility parsing (PR #6, merged)
-- Docs bootstrap: CLAUDE.md, conventions.md, working-memory.md created (2026-03-10)
+- `app/core/store.py`: `get_outline()` now includes Solidity-specific fields (visibility, reachable, payable) in outline symbols when present. Required for voro-brain exploitability assessor to detect public entry points.
 
-## Open Issues
+## Completed Today
 
-- #5: Parse Solidity visibility modifiers for reachability (referenced by voro-brain Phase 2.4)
+1. PR #15 (`chore/docs-rollout-cleanup`) — merged
+2. PR #16 (`feat/poller`) — merged
+3. PR #17 (`fix/solidity-visibility`) — merged, closes #5
+4. Fixed test baseline: 52/52 green
+5. Outline fix: include visibility/reachable/payable in get_outline() output
 
-## Blockers
+## Cross-Repo Context
 
-- voro-brain Phase 2.4 re-eval blocked by #5 (visibility modifiers)
-
-## References
-
-- Architecture: `CLAUDE.md`
-- Deployment: `docs/DEPLOY_ZEABUR.md`
-- API schema: `openapi.json`
+- voro-brain Phase 2.4 re-evaluation validated — pipeline produces reachable=True with scores
+- 4 repos have stale branches needing cleanup (scan/web/dash/docs)
