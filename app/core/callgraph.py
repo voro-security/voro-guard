@@ -74,7 +74,7 @@ def _visibility_for(modifiers: str, *, force_external: bool = False) -> str:
     if force_external:
         return "external"
     m = _VISIBILITY_RE.search(modifiers or "")
-    return m.group(1) if m else "internal"
+    return m.group(1) if m else "public"
 
 
 def _is_payable(modifiers: str) -> bool:
@@ -126,7 +126,27 @@ def parse_solidity_functions(source: str) -> dict[str, SolidityFunction]:
             calls=calls,
         )
 
+    _propagate_reachability(functions)
     return functions
+
+
+def _propagate_reachability(functions: dict[str, SolidityFunction]) -> None:
+    """Mark functions as reachable if called (transitively) by any entry point."""
+    queue = [name for name, fn in functions.items() if fn.reachable]
+    visited: set[str] = set(queue)
+    while queue:
+        current = queue.pop()
+        fn = functions.get(current)
+        if fn is None:
+            continue
+        for call in fn.calls:
+            if call.name in visited:
+                continue
+            callee = functions.get(call.name)
+            if callee is not None and not callee.reachable:
+                callee.reachable = True
+                visited.add(call.name)
+                queue.append(call.name)
 
 
 def build_callgraph(source: str, entry_function: str, max_depth: int = 10) -> tuple[list[dict], str | None]:
