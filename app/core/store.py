@@ -82,14 +82,17 @@ def get_outline(payload: dict[str, Any]) -> dict[str, Any]:
     by_file: dict[str, list[dict[str, Any]]] = {}
     for sym in payload.get("symbols", []):
         file = str(sym.get("file", ""))
-        by_file.setdefault(file, []).append(
-            {
-                "id": sym.get("id"),
-                "kind": sym.get("kind"),
-                "name": sym.get("name"),
-                "line": sym.get("line"),
-            }
-        )
+        entry: dict[str, Any] = {
+            "id": sym.get("id"),
+            "kind": sym.get("kind"),
+            "name": sym.get("name"),
+            "line": sym.get("line"),
+        }
+        # Include Solidity-specific fields when present
+        for extra_key in ("visibility", "reachable", "payable"):
+            if extra_key in sym:
+                entry[extra_key] = sym[extra_key]
+        by_file.setdefault(file, []).append(entry)
     file_items = []
     for file, symbols in sorted(by_file.items()):
         meta = files_by_path.get(file, {})
