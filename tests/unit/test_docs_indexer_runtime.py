@@ -8,6 +8,9 @@ if str(ROOT) not in sys.path:
 from app.core.docs_ingest import discover_local_docs
 from app.core.docs_parser import parse_markdown_document
 from app.core.docs_store import build_docs_payload
+from app.models.schemas import IndexRequest
+from app.routes.index import create_index
+from app.config import settings
 
 
 def test_discover_local_docs_and_build_payload(tmp_path: Path) -> None:
@@ -52,3 +55,31 @@ def test_discover_local_docs_and_build_payload(tmp_path: Path) -> None:
     guide_sections = [section for section in payload["sections"] if section["doc_id"] == doc_by_path["docs/guide.md"]["doc_id"]]
     assert len(guide_sections) == 1
     assert guide_sections[0]["visibility"] == "pro"
+
+
+def test_create_index_supports_docs_artifact_flow(tmp_path: Path) -> None:
+    settings.trust_mode = "strict"
+    settings.signing_key = "dev-signing-key"
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True, exist_ok=True)
+    (repo / "README.md").write_text("---\nvisibility: internal\n---\n# Intro\n\nHello.\n", encoding="utf-8")
+    (repo / "docs" / "guide.md").write_text("## Guide\n\nGuide body.\n", encoding="utf-8")
+
+    indexed = create_index(
+        IndexRequest(
+            workspace_id="ws1",
+            index_kind="docs",
+            source_type="local_repo",
+            source_id="repo",
+            source_revision="r1",
+            repo_ref=str(repo),
+        )
+    )
+
+    assert indexed["schema_version"] == "docs-v1"
+    assert indexed["payload"]["stats"]["document_count"] == 2
+    assert indexed["payload"]["stats"]["section_count"] == 2
+    assert indexed["payload"]["documents"][0]["path"] == "README.md"
+    assert indexed["payload"]["documents"][0]["visibility"] == "internal"
