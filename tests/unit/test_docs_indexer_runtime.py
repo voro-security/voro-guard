@@ -9,9 +9,9 @@ from app.core.docs_ingest import discover_local_docs
 from app.core.docs_parser import parse_markdown_document
 from app.core.docs_store import build_docs_payload
 from app.config import settings
-from app.models.schemas import GetRequest, IndexRequest, OutlineRequest
+from app.models.schemas import GetRequest, IndexRequest, OutlineRequest, SearchRequest
 from app.routes.index import create_index
-from app.routes.query import get_outline, get_symbol
+from app.routes.query import get_outline, get_symbol, search_index
 
 
 def test_discover_local_docs_and_build_payload(tmp_path: Path) -> None:
@@ -161,3 +161,67 @@ def test_docs_retrieval_and_outline_flow(tmp_path: Path) -> None:
     assert outline["results"]["summary"]["section_count"] == 1
     assert outline["results"]["documents"][0]["doc_id"] == public_doc["doc_id"]
     assert outline["results"]["documents"][0]["sections"][0]["visibility"] == "public"
+
+
+def test_docs_search_uses_derived_fields_and_visibility_filters(tmp_path: Path) -> None:
+    settings.trust_mode = "strict"
+    settings.signing_key = "dev-signing-key"
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True, exist_ok=True)
+    (repo / "README.md").write_text("---\nvisibility: internal\n---\n# Intro\n\nHello secure operators.\n", encoding="utf-8")
+    (repo / "docs" / "guide.md").write_text("## Deployment Guide\n\nGuide body for rollout.\n", encoding="utf-8")
+
+    indexed = create_index(
+        IndexRequest(
+            workspace_id="ws1",
+            index_kind="docs",
+            source_type="local_repo",
+            source_id="repo",
+            source_revision="r1",
+            repo_ref=str(repo),
+        )
+    )
+
+    source_fingerprint = indexed["source_fingerprint"]
+
+    guide_search = search_index(
+        SearchRequest(
+            workspace_id="ws1",
+            source_fingerprint=source_fingerprint,
+            artifact_id=indexed["artifact_id"],
+            query="deployment",
+            allowed_visibility=["public"],
+        )
+    )
+    assert guide_search["ok"] is True
+    assert guide_search["mode"] == "search"
+    assert len(guide_search["results"]) == 1
+    assert guide_search["results"][0]["path"] == "docs/guide.md"
+    assert "heading" in guide_search["results"][0]["match_fields"]
+
+    hidden_search = search_index(
+        SearchRequest(
+            workspace_id="ws1",
+            source_fingerprint=source_fingerprint,
+            artifact_id=indexed["artifact_id"],
+            query="operators",
+            allowed_visibility=["public"],
+        )
+    )
+    assert hidden_search["ok"] is True
+    assert hidden_search["results"] == []
+
+    summary_search = search_index(
+        SearchRequest(
+            workspace_id="ws1",
+            source_fingerprint=source_fingerprint,
+            artifact_id=indexed["artifact_id"],
+            query="rollout",
+            allowed_visibility=["public"],
+        )
+    )
+    assert summary_search["ok"] is True
+    assert len(summary_search["results"]) == 1
+    assert "summary" in summary_search["results"][0]["match_fields"] or "keywords" in summary_search["results"][0]["match_fields"]
