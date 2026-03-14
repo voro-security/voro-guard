@@ -7,6 +7,7 @@ class Settings(BaseModel):
     signer: str = os.getenv("CODE_INDEX_SIGNER", "voro-index-guard").strip()
     signing_key: str = os.getenv("CODE_INDEX_SIGNING_KEY", "").strip()
     artifact_root: str = os.getenv("ARTIFACT_ROOT", "./data/artifacts").strip()
+    adaptive_learning_enabled: bool = os.getenv("VORO_ADAPTIVE_LEARNING", "").strip().lower() in ("1", "true")
     service_token: str = os.getenv("CODE_INDEX_SERVICE_TOKEN", "").strip()
     github_token: str = os.getenv("CODE_INDEX_GITHUB_TOKEN", "").strip()
     max_files: int = int(os.getenv("CODE_INDEX_MAX_FILES", "400"))

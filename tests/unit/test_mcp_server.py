@@ -11,6 +11,9 @@ Tests cover:
   - search_docs proxies to /v1/search with optional visibility
   - get_doc_section proxies to /v1/get with doc_id or section_id
   - outline_docs proxies to /v1/outline with optional visibility
+  - publish_learning_state proxies to /v1/learning-state
+  - read_learning_state proxies to GET /v1/learning-state/{artifact_id}
+  - list_learning_states proxies to GET /v1/learning-states with optional filters
   - source_fingerprint is forwarded when provided
   - optional fields are omitted from request body when empty
   - HTTP 4xx errors are converted to RuntimeError with reason_code
@@ -50,6 +53,11 @@ def _mock_post(response: httpx.Response):
 def _mock_post_raises(exc: Exception):
     """Return a context-manager patch that makes httpx.post raise *exc*."""
     return patch("httpx.post", side_effect=exc)
+
+
+def _mock_get(response: httpx.Response):
+    """Return a context-manager patch that makes httpx.get return *response*."""
+    return patch("httpx.get", return_value=response)
 
 
 # ---------------------------------------------------------------------------
@@ -422,6 +430,89 @@ def test_outline_docs_omits_optional_fields_when_empty():
     body = mock.call_args.kwargs["json"]
     assert "source_fingerprint" not in body
     assert "allowed_visibility" not in body
+
+
+# ---------------------------------------------------------------------------
+# Learning tools
+# ---------------------------------------------------------------------------
+
+
+def test_publish_learning_state_proxies_to_learning_state_post():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "artifact_id": "learning-1"}
+    with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/learning-state")) as mock:
+        result = mod.publish_learning_state(
+            workspace_id="ws1",
+            source_id="voro-brain",
+            state_type="priors",
+            payload={"alpha": 0.7},
+            metadata={"published_at": "2026-03-14T00:00:00Z"},
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "/v1/learning-state" in mock.call_args.args[0]
+    assert body["workspace_id"] == "ws1"
+    assert body["source_id"] == "voro-brain"
+    assert body["state_type"] == "priors"
+    assert body["payload"] == {"alpha": 0.7}
+    assert body["metadata"] == {"published_at": "2026-03-14T00:00:00Z"}
+    assert result == expected
+
+
+def test_publish_learning_state_omits_empty_metadata():
+    import app.mcp_server as mod
+
+    with _mock_post(_make_response(200, {"ok": True}, url="http://127.0.0.1:18765/v1/learning-state")) as mock:
+        mod.publish_learning_state(
+            workspace_id="ws1",
+            source_id="voro-scan",
+            state_type="precision",
+            payload={"fp_rate": 0.1},
+            metadata=None,
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "metadata" not in body
+
+
+def test_read_learning_state_proxies_to_learning_state_get():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "schema_version": "learning-v1"}
+    with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/learning-state/art-1")) as mock:
+        result = mod.read_learning_state(workspace_id="ws1", artifact_id="art-1")
+    assert "/v1/learning-state/art-1" in mock.call_args.args[0]
+    params = mock.call_args.kwargs["params"]
+    assert params == {"workspace_id": "ws1"}
+    assert result == expected
+
+
+def test_list_learning_states_proxies_to_learning_states_get_with_filters():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "items": []}
+    with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/learning-states")) as mock:
+        result = mod.list_learning_states(
+            workspace_id="ws1",
+            source_id="voro-brain",
+            state_type="quarantine",
+            limit=25,
+        )
+    assert "/v1/learning-states" in mock.call_args.args[0]
+    params = mock.call_args.kwargs["params"]
+    assert params["workspace_id"] == "ws1"
+    assert params["source_id"] == "voro-brain"
+    assert params["state_type"] == "quarantine"
+    assert params["limit"] == 25
+    assert result == expected
+
+
+def test_list_learning_states_omits_empty_filters():
+    import app.mcp_server as mod
+
+    with _mock_get(_make_response(200, {"ok": True, "items": []}, url="http://127.0.0.1:18765/v1/learning-states")) as mock:
+        mod.list_learning_states(workspace_id="ws1")
+    params = mock.call_args.kwargs["params"]
+    assert params == {"workspace_id": "ws1", "limit": 100}
 
 
 # ---------------------------------------------------------------------------

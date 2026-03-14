@@ -11,6 +11,7 @@ _VALID_SOURCE_TYPES = {
     "http_docs",
     "feed",
     "snapshot",
+    "learning_state",
 }
 
 

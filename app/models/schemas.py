@@ -143,6 +143,14 @@ class OutlineRequest(BaseModel):
         return self
 
 
+class LearningStatePublishRequest(BaseModel):
+    workspace_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    state_type: str = Field(min_length=1)
+    payload: dict[str, Any]
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class CallgraphRequest(BaseModel):
     file: str = Field(min_length=1)
     entry_function: str = Field(min_length=1)

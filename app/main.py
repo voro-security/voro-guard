@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.routes.index import router as index_router
+from app.routes.learning import router as learning_router
 from app.routes.query import router as query_router
 
 
@@ -29,4 +30,5 @@ def health():
 
 
 app.include_router(index_router)
+app.include_router(learning_router)
 app.include_router(query_router)
