@@ -12,8 +12,8 @@ from app.config import settings
 from app.core.artifacts import load_artifact, persist_artifact, verify_artifact
 from app.core.docs_store import build_docs_payload
 from app.core.signing import canonical_json, sha256_hex, sign_hash
-from app.models.schemas import ArtifactEnvelope, GetRequest, Manifest, OutlineRequest
-from app.routes.query import get_outline, get_symbol
+from app.models.schemas import ArtifactEnvelope, GetRequest, Manifest, OutlineRequest, SearchRequest
+from app.routes.query import get_outline, get_symbol, search_index
 
 
 def setup_function() -> None:
@@ -163,3 +163,16 @@ def test_docs_query_routes_reject_tampered_artifact(tmp_path: Path) -> None:
         )
     assert outline_exc.value.status_code == 403
     assert outline_exc.value.detail["reason_code"] == "artifact_untrusted_hash_mismatch"
+
+    with pytest.raises(HTTPException) as search_exc:
+        search_index(
+            SearchRequest(
+                workspace_id="ws1",
+                source_fingerprint="sha256:docs",
+                artifact_id="docsartifact000001",
+                query="intro",
+                allowed_visibility=["public"],
+            )
+        )
+    assert search_exc.value.status_code == 403
+    assert search_exc.value.detail["reason_code"] == "artifact_untrusted_hash_mismatch"

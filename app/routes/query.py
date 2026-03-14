@@ -4,7 +4,7 @@ from app.metrics import metrics
 from app.models.schemas import CallgraphRequest, GetRequest, OutlineRequest, QueryRequest, SearchRequest
 from app.core.artifacts import load_artifact, verify_artifact
 from app.core.callgraph import build_callgraph_from_file
-from app.core.docs_store import get_docs_entry, get_docs_outline
+from app.core.docs_store import get_docs_entry, get_docs_outline, search_docs
 from app.core.store import get_outline as build_outline
 from app.core.store import get_symbol as find_symbol
 from app.core.store import search_symbols as run_search
@@ -57,15 +57,12 @@ def _execute_query(req: QueryRequest):
     is_docs_artifact = artifact.get("schema_version") == "docs-v1"
     if is_docs_artifact:
         if req.mode == "search":
-            metrics.record_deny("docs_search_not_supported")
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "reason_code": "docs_search_not_supported",
-                    "message": "docs search is not supported in this slice",
-                },
+            results = search_docs(
+                payload,
+                req.query or "",
+                allowed_visibility=req.allowed_visibility,
             )
-        if req.mode == "get":
+        elif req.mode == "get":
             if not (req.doc_id or req.section_id):
                 metrics.record_deny("doc_target_required")
                 raise HTTPException(
@@ -139,6 +136,7 @@ def search_index(req: SearchRequest):
             artifact_id=req.artifact_id,
             mode="search",
             query=req.query,
+            allowed_visibility=req.allowed_visibility,
         )
     )
 

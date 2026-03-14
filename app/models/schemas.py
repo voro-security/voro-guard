@@ -89,6 +89,7 @@ class SearchRequest(BaseModel):
     repo_fingerprint: Optional[str] = None
     artifact_id: str = Field(min_length=1)
     query: str = Field(min_length=1)
+    allowed_visibility: Optional[list[Literal["public", "pro", "enterprise", "internal"]]] = None
 
     @model_validator(mode="after")
     def compat(self) -> "SearchRequest":

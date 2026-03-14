@@ -209,3 +209,103 @@ def get_docs_outline(
         },
         "documents": outline_documents,
     }
+
+
+def search_docs(
+    payload: dict[str, Any],
+    query: str,
+    *,
+    allowed_visibility: list[str] | None = None,
+    max_results: int = 20,
+) -> list[dict[str, Any]]:
+    needle = query.strip().lower()
+    if not needle:
+        return []
+
+    documents = payload.get("documents", [])
+    sections = payload.get("sections", [])
+    docs_by_id = {
+        str(doc.get("doc_id", "")): doc
+        for doc in documents
+        if isinstance(doc, dict) and isinstance(doc.get("doc_id"), str)
+    }
+
+    scored: list[tuple[int, str, int, dict[str, Any]]] = []
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        document = docs_by_id.get(str(section.get("doc_id", "")))
+        if not isinstance(document, dict):
+            continue
+
+        visibility = str(document.get("visibility", section.get("visibility", "public")))
+        if not _visibility_allowed(visibility, allowed_visibility):
+            continue
+
+        heading = str(section.get("heading", ""))
+        summary = str(section.get("summary", ""))
+        keywords = [
+            str(item).lower()
+            for item in section.get("keywords", [])
+            if isinstance(item, str)
+        ]
+        heading_path = [
+            str(item)
+            for item in section.get("heading_path", [])
+            if isinstance(item, str)
+        ]
+
+        score = 0
+        match_fields: list[str] = []
+        heading_lower = heading.lower()
+        summary_lower = summary.lower()
+        joined_path = " ".join(part.lower() for part in heading_path)
+
+        if heading_lower == needle:
+            score += 30
+            match_fields.append("heading")
+        elif needle in heading_lower:
+            score += 18
+            match_fields.append("heading")
+
+        if needle in joined_path and "heading_path" not in match_fields:
+            score += 12
+            match_fields.append("heading_path")
+
+        if needle in summary_lower:
+            score += 8
+            match_fields.append("summary")
+
+        if needle in keywords:
+            score += 14
+            match_fields.append("keywords")
+        elif any(needle in keyword for keyword in keywords):
+            score += 6
+            match_fields.append("keywords")
+
+        if score <= 0:
+            continue
+
+        scored.append(
+            (
+                score,
+                str(document.get("path", "")),
+                int(section.get("start_line", 0)),
+                {
+                    "doc_id": document.get("doc_id"),
+                    "section_id": section.get("section_id"),
+                    "path": document.get("path"),
+                    "title": document.get("title"),
+                    "heading": heading,
+                    "heading_path": heading_path,
+                    "summary": summary,
+                    "keywords": section.get("keywords", []),
+                    "visibility": visibility,
+                    "match_fields": match_fields,
+                    "score": score,
+                },
+            )
+        )
+
+    scored.sort(key=lambda item: (-item[0], item[1], item[2]))
+    return [result for _, _, _, result in scored[:max_results]]
