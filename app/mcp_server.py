@@ -25,7 +25,23 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
-from fastmcp import FastMCP
+try:
+    from fastmcp import FastMCP
+except ImportError:  # pragma: no cover - test/dev fallback when FastMCP is unavailable
+    class FastMCP:  # type: ignore[override]
+        def __init__(self, name: str, instructions: str, lifespan: Any) -> None:
+            self.name = name
+            self.instructions = instructions
+            self.lifespan = lifespan
+
+        def tool(self):
+            def decorator(func):
+                return func
+
+            return decorator
+
+        def run(self, transport: str = "stdio") -> None:
+            raise RuntimeError("FastMCP is not installed")
 
 logger = logging.getLogger("voro-guard.mcp")
 
@@ -177,7 +193,8 @@ mcp = FastMCP(
         "Use search_symbols to find functions/classes by name, "
         "get_symbol to retrieve full details for a specific symbol ID, "
         "outline_file to list all symbols in a repository artifact, "
-        "and index_repo to trigger indexing of a repository."
+        "and index_repo to trigger indexing of a repository. "
+        "For docs artifacts, use index_docs, search_docs, and get_doc_section."
     ),
     lifespan=_lifespan,
 )
@@ -310,6 +327,111 @@ def index_repo(
     if source_revision:
         body["source_revision"] = source_revision
     return _post("/v1/index", body)
+
+
+@mcp.tool()
+def index_docs(
+    source_type: str,
+    source_id: str,
+    workspace_id: str,
+    source_revision: str = "",
+) -> dict[str, Any]:
+    """
+    Trigger docs indexing and return a signed docs artifact.
+
+    Args:
+        source_type: One of 'github', 'git', 'local_repo', 'snapshot'.
+        source_id: Repository reference — GitHub 'owner/repo' or local path.
+        workspace_id: Workspace identifier to scope this artifact.
+        source_revision: Optional revision/commit SHA. Omit to use latest.
+
+    Returns:
+        JSON response including the docs artifact_id and source_fingerprint for
+        subsequent search_docs / get_doc_section calls.
+    """
+    body: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "source_type": source_type,
+        "source_id": source_id,
+        "index_kind": "docs",
+    }
+    if source_revision:
+        body["source_revision"] = source_revision
+    return _post("/v1/index", body)
+
+
+@mcp.tool()
+def search_docs(
+    query: str,
+    workspace_id: str,
+    artifact_id: str,
+    source_fingerprint: str = "",
+    allowed_visibility: list[str] | None = None,
+) -> dict[str, Any]:
+    """
+    Search a signed docs artifact using headings, summaries, and keywords.
+
+    Args:
+        query: Search term to match against docs derived fields.
+        workspace_id: Workspace identifier that owns the artifact.
+        artifact_id: Docs artifact identifier returned by index_docs.
+        source_fingerprint: Source fingerprint (sha256:...) from the index response.
+        allowed_visibility: Optional allowed document visibility tiers to filter results.
+
+    Returns:
+        JSON response with a 'results' list of matching docs sections.
+    """
+    body: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "artifact_id": artifact_id,
+        "query": query,
+    }
+    if source_fingerprint:
+        body["source_fingerprint"] = source_fingerprint
+    if allowed_visibility:
+        body["allowed_visibility"] = allowed_visibility
+    return _post("/v1/search", body)
+
+
+@mcp.tool()
+def get_doc_section(
+    workspace_id: str,
+    artifact_id: str,
+    doc_id: str = "",
+    section_id: str = "",
+    source_fingerprint: str = "",
+    allowed_visibility: list[str] | None = None,
+) -> dict[str, Any]:
+    """
+    Retrieve a docs document or specific section from a signed docs artifact.
+
+    Args:
+        workspace_id: Workspace identifier that owns the artifact.
+        artifact_id: Docs artifact identifier returned by index_docs.
+        doc_id: Optional docs document identifier.
+        section_id: Optional docs section identifier.
+        source_fingerprint: Source fingerprint (sha256:...) from the index response.
+        allowed_visibility: Optional allowed document visibility tiers to filter results.
+
+    Returns:
+        JSON response with 'results' containing the matched document or section.
+    """
+    if not doc_id and not section_id:
+        raise ValueError("doc_id_or_section_id_required")
+
+    body: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "artifact_id": artifact_id,
+    }
+    if doc_id:
+        body["doc_id"] = doc_id
+    if section_id:
+        body["section_id"] = section_id
+    if source_fingerprint:
+        body["source_fingerprint"] = source_fingerprint
+    if allowed_visibility:
+        body["allowed_visibility"] = allowed_visibility
+    return _post("/v1/get", body)
 
 
 # ---------------------------------------------------------------------------
