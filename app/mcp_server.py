@@ -147,11 +147,15 @@ def _stop_managed_server() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _post(path: str, body: dict[str, Any]) -> dict[str, Any]:
-    """POST to the FastAPI service and return the JSON response."""
+def _request(method: str, path: str, *, body: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Send an HTTP request to the FastAPI service and return the JSON response."""
     url = f"{INDEX_GUARD_URL}{path}"
     try:
-        resp = httpx.post(url, json=body, headers=_build_auth_headers(), timeout=30.0)
+        request = method.strip().upper()
+        if request == "GET":
+            resp = httpx.get(url, params=params, headers=_build_auth_headers(), timeout=30.0)
+        else:
+            resp = httpx.post(url, json=body, headers=_build_auth_headers(), timeout=30.0)
         resp.raise_for_status()
         return resp.json()
     except httpx.HTTPStatusError as exc:
@@ -164,6 +168,14 @@ def _post(path: str, body: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError(f"index-guard error ({exc.response.status_code}): {reason}") from exc
     except httpx.TransportError as exc:
         raise RuntimeError(f"index-guard unreachable: {exc}") from exc
+
+
+def _post(path: str, body: dict[str, Any]) -> dict[str, Any]:
+    return _request("POST", path, body=body)
+
+
+def _get(path: str, params: dict[str, Any]) -> dict[str, Any]:
+    return _request("GET", path, params=params)
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +206,8 @@ mcp = FastMCP(
         "get_symbol to retrieve full details for a specific symbol ID, "
         "outline_file to list all symbols in a repository artifact, "
         "and index_repo to trigger indexing of a repository. "
-        "For docs artifacts, use index_docs, search_docs, get_doc_section, and outline_docs."
+        "For docs artifacts, use index_docs, search_docs, get_doc_section, and outline_docs. "
+        "For adaptive learning backplane state, use publish_learning_state, read_learning_state, and list_learning_states."
     ),
     lifespan=_lifespan,
 )
@@ -462,6 +475,86 @@ def outline_docs(
     if allowed_visibility:
         body["allowed_visibility"] = allowed_visibility
     return _post("/v1/outline", body)
+
+
+@mcp.tool()
+def publish_learning_state(
+    workspace_id: str,
+    source_id: str,
+    state_type: str,
+    payload: dict[str, Any],
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Publish an opaque learning-state snapshot to the adaptive learning backplane.
+
+    Args:
+        workspace_id: Workspace identifier that owns the learning state.
+        source_id: Publishing source identifier, such as the producer repo or component.
+        state_type: Logical learning-state type (priors, multipliers, quarantine, precision).
+        payload: Opaque publisher-defined payload.
+        metadata: Optional publisher-defined metadata.
+
+    Returns:
+        Signed learning-state artifact response.
+    """
+    body: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "source_id": source_id,
+        "state_type": state_type,
+        "payload": payload,
+    }
+    if metadata:
+        body["metadata"] = metadata
+    return _post("/v1/learning-state", body)
+
+
+@mcp.tool()
+def read_learning_state(
+    workspace_id: str,
+    artifact_id: str,
+) -> dict[str, Any]:
+    """
+    Read the latest signed learning-state artifact for a given artifact ID.
+
+    Args:
+        workspace_id: Workspace identifier that owns the artifact.
+        artifact_id: Stable learning-state artifact identifier.
+
+    Returns:
+        JSON response containing the signed learning-state envelope.
+    """
+    return _get("/v1/learning-state/" + artifact_id, {"workspace_id": workspace_id})
+
+
+@mcp.tool()
+def list_learning_states(
+    workspace_id: str,
+    source_id: str = "",
+    state_type: str = "",
+    limit: int = 100,
+) -> dict[str, Any]:
+    """
+    List the latest learning-state artifacts for a workspace, optionally filtered.
+
+    Args:
+        workspace_id: Workspace identifier that owns the artifacts.
+        source_id: Optional producer identifier filter.
+        state_type: Optional logical learning-state type filter.
+        limit: Maximum number of items to return.
+
+    Returns:
+        JSON response with learning-state summaries.
+    """
+    params: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "limit": limit,
+    }
+    if source_id:
+        params["source_id"] = source_id
+    if state_type:
+        params["state_type"] = state_type
+    return _get("/v1/learning-states", params)
 
 
 # ---------------------------------------------------------------------------
