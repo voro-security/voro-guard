@@ -9,7 +9,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact
+from app.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact, _sanitize_component
 from app.core.identity import compute_source_fingerprint
 from app.core.signing import canonical_json, sha256_hex, sign_hash
 from app.models.schemas import ArtifactEnvelope, LearningStatePublishRequest, Manifest
@@ -17,6 +17,10 @@ from app.security import require_auth
 
 
 router = APIRouter()
+_REASON_STATUS = {
+    "artifact_invalid": 422,
+    "artifact_path_outside_root": 403,
+}
 
 
 def _now_utc() -> str:
@@ -49,11 +53,17 @@ def _learning_payload(req: LearningStatePublishRequest) -> dict[str, Any]:
     }
 
 
+def _http_error_for_artifact_error(code: str) -> HTTPException:
+    status = _REASON_STATUS.get(code, 422)
+    return HTTPException(status_code=status, detail={"reason_code": code, "message": code})
+
+
 def _load_learning_state_candidates(workspace_id: str) -> list[dict[str, Any]]:
+    ws = _sanitize_component(workspace_id)
     root = Path(settings.artifact_root).resolve()
     if not root.exists():
         return []
-    pattern = f"{workspace_id}__*__*.json"
+    pattern = f"{ws}__*__*.json"
     latest_by_artifact_id: dict[str, dict[str, Any]] = {}
     for path in root.glob(pattern):
         try:
@@ -111,7 +121,10 @@ def publish_learning_state(req: LearningStatePublishRequest, authorization: str 
         source_revision,
     )
     artifact_id = _learning_artifact_id(req.workspace_id, req.source_id, req.state_type)
-    baseline = load_latest_artifact(req.workspace_id, artifact_id)
+    try:
+        baseline = load_latest_artifact(req.workspace_id, artifact_id)
+    except ValueError as exc:
+        raise _http_error_for_artifact_error(str(exc)) from exc
     artifact_version = int(baseline.get("artifact_version", 1) + 1) if baseline else 1
     payload = _learning_payload(req)
 
@@ -151,7 +164,10 @@ def publish_learning_state(req: LearningStatePublishRequest, authorization: str 
         payload=payload,
     )
     envelope_dict = envelope.model_dump()
-    stored_path = persist_artifact(envelope_dict)
+    try:
+        stored_path = persist_artifact(envelope_dict)
+    except ValueError as exc:
+        raise _http_error_for_artifact_error(str(exc)) from exc
     return {
         "ok": True,
         "reason_code": "learning_state_published",
@@ -170,7 +186,10 @@ def read_learning_state(
     if disabled is not None:
         return disabled
     require_auth(authorization)
-    artifact = load_latest_artifact(workspace_id, artifact_id)
+    try:
+        artifact = load_latest_artifact(workspace_id, artifact_id)
+    except ValueError as exc:
+        raise _http_error_for_artifact_error(str(exc)) from exc
     if artifact is None or artifact.get("schema_version") != "learning-v1":
         raise HTTPException(
             status_code=404,
@@ -197,8 +216,13 @@ def list_learning_states(
     if disabled is not None:
         return disabled
     require_auth(authorization)
+    try:
+        artifacts = _load_learning_state_candidates(workspace_id)
+    except ValueError as exc:
+        raise _http_error_for_artifact_error(str(exc)) from exc
+
     items: list[dict[str, Any]] = []
-    for artifact in _load_learning_state_candidates(workspace_id):
+    for artifact in artifacts:
         artifact_id = str(artifact.get("artifact_id", ""))
         if source_id and artifact.get("source_id") != source_id:
             continue

@@ -92,6 +92,68 @@ def test_publish_read_and_list_learning_state_flow(tmp_path: Path) -> None:
     assert listed_body["items"][0]["source_id"] == "voro-brain"
 
 
+def test_list_learning_states_handles_workspace_ids_with_colon(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    publish = client.post(
+        "/v1/learning-state",
+        json={
+            "workspace_id": "ws:1",
+            "source_id": "voro-brain",
+            "state_type": "priors",
+            "payload": {"alpha": 0.7},
+            "metadata": {"published_at": "2026-03-14T00:00:00Z"},
+        },
+    )
+    assert publish.status_code == 200
+
+    listed = client.get("/v1/learning-states", params={"workspace_id": "ws:1"})
+    assert listed.status_code == 200
+    listed_body = listed.json()
+    assert listed_body["count"] == 1
+    assert listed_body["items"][0]["source_id"] == "voro-brain"
+
+
+def test_publish_learning_state_invalid_workspace_returns_4xx(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.post(
+        "/v1/learning-state",
+        json={
+            "workspace_id": "ws/1",
+            "source_id": "voro-brain",
+            "state_type": "priors",
+            "payload": {"alpha": 0.7},
+            "metadata": {},
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["reason_code"] == "artifact_invalid"
+
+
+def test_read_learning_state_invalid_workspace_returns_4xx(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.get(
+        "/v1/learning-state/art-1",
+        params={"workspace_id": "ws/1"},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["reason_code"] == "artifact_invalid"
+
+
+def test_list_learning_states_invalid_workspace_returns_4xx(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.get("/v1/learning-states", params={"workspace_id": "ws/1"})
+    assert response.status_code == 422
+    assert response.json()["detail"]["reason_code"] == "artifact_invalid"
+
+
 def test_publish_learning_state_requires_signing_key_in_strict_mode(tmp_path: Path) -> None:
     settings.adaptive_learning_enabled = True
     settings.artifact_root = str(tmp_path / "artifacts")

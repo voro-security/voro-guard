@@ -46,6 +46,9 @@ voro-brain (ExploitabilityAssessor)
 |--------|------|---------|------|
 | GET | `/health` | Service health check | No |
 | POST | `/v1/index` | Index a repository (code or docs), create signed artifact | Bearer |
+| POST | `/v1/learning-state` | Publish signed adaptive-learning backplane state | Bearer / toggle-gated |
+| GET | `/v1/learning-state/{artifact_id}` | Read signed adaptive-learning state artifact | Bearer / toggle-gated |
+| GET | `/v1/learning-states` | List signed adaptive-learning state artifacts | Bearer / toggle-gated |
 | POST | `/v1/search` | Search symbols (code) or sections (docs) by query | Bearer |
 | POST | `/v1/get` | Get symbol by ID (code) or doc/section by ID (docs) | Bearer |
 | POST | `/v1/outline` | List files/symbols (code) or documents/sections (docs) | Bearer |
@@ -63,6 +66,10 @@ voro-brain (ExploitabilityAssessor)
 | `index_docs(source_type, source_id, workspace_id, source_revision)` | POST `/v1/index` | Index docs, return signed `docs-v1` artifact |
 | `search_docs(query, workspace_id, artifact_id, source_fingerprint, allowed_visibility)` | POST `/v1/search` | Search doc sections by heading/keyword/summary |
 | `get_doc_section(workspace_id, artifact_id, doc_id, section_id, source_fingerprint, allowed_visibility)` | POST `/v1/get` | Get specific document or section |
+| `outline_docs(workspace_id, artifact_id, source_fingerprint, allowed_visibility)` | POST `/v1/outline` | Outline docs artifact |
+| `publish_learning_state(workspace_id, source_id, state_type, payload, metadata)` | POST `/v1/learning-state` | Publish adaptive-learning state |
+| `read_learning_state(workspace_id, artifact_id)` | GET `/v1/learning-state/{artifact_id}` | Read adaptive-learning state |
+| `list_learning_states(workspace_id, source_id, state_type, limit)` | GET `/v1/learning-states` | List adaptive-learning state artifacts |
 
 ## Environment Variables
 
@@ -105,6 +112,7 @@ voro-guard/
 │   │   └── schemas.py                # Pydantic request/response models (160L)
 │   ├── routes/
 │   │   ├── index.py                  # POST /v1/index, artifact signing (125L)
+│   │   ├── learning.py               # Adaptive-learning backplane publish/read/list routes
 │   │   └── query.py                  # Search/get/outline/metrics/callgraph (160L)
 │   └── core/                         # Business logic
 │       ├── artifacts.py              # Artifact persistence & verification (130L)
@@ -201,6 +209,17 @@ Payload shape: `documents[]` (doc_id, path, title, status, class, authority, vis
 Visibility tiers: `public`, `pro`, `enterprise`, `internal`. Document-level in v1; sections inherit parent document visibility. Retrieval interfaces filter by `allowed_visibility`.
 
 Binding spec: `voro-docs/DOCS_INDEXING_SPEC.md`.
+
+### Learning Artifacts (`learning-v1`)
+
+Adaptive-learning backplane state uses `schema_version: "learning-v1"` and the same artifact envelope, signing, and persistence infrastructure as code/docs artifacts.
+
+The payload remains publisher-defined and opaque at the service layer. Guard stores:
+- `state_type`
+- `metadata`
+- `payload`
+
+The feature toggle is `VORO_ADAPTIVE_LEARNING`. When disabled, `/v1/learning-state*` returns `404 {"reason":"adaptive_learning_disabled"}` with zero behavior change to the rest of the service.
 
 ## Supported Languages
 
