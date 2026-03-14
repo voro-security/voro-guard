@@ -45,10 +45,10 @@ voro-brain (ExploitabilityAssessor)
 | Method | Path | Purpose | Auth |
 |--------|------|---------|------|
 | GET | `/health` | Service health check | No |
-| POST | `/v1/index` | Index a repository, create signed artifact | Bearer |
-| POST | `/v1/search` | Search symbols by query | Bearer |
-| POST | `/v1/get` | Get specific symbol by ID | Bearer |
-| POST | `/v1/outline` | List all files and symbols in artifact | Bearer |
+| POST | `/v1/index` | Index a repository (code or docs), create signed artifact | Bearer |
+| POST | `/v1/search` | Search symbols (code) or sections (docs) by query | Bearer |
+| POST | `/v1/get` | Get symbol by ID (code) or doc/section by ID (docs) | Bearer |
+| POST | `/v1/outline` | List files/symbols (code) or documents/sections (docs) | Bearer |
 | POST | `/v1/callgraph` | Build Solidity call graph from file | Bearer |
 | GET | `/v1/metrics` | Service metrics snapshot | Bearer |
 
@@ -60,6 +60,9 @@ voro-brain (ExploitabilityAssessor)
 | `search_symbols(query, workspace_id, artifact_id, source_fingerprint)` | POST `/v1/search` | Search symbols |
 | `get_symbol(symbol_id, workspace_id, artifact_id, source_fingerprint)` | POST `/v1/get` | Get symbol detail |
 | `outline_file(workspace_id, artifact_id, source_fingerprint)` | POST `/v1/outline` | File/symbol outline |
+| `index_docs(source_type, source_id, workspace_id, source_revision)` | POST `/v1/index` | Index docs, return signed `docs-v1` artifact |
+| `search_docs(query, workspace_id, artifact_id, source_fingerprint, allowed_visibility)` | POST `/v1/search` | Search doc sections by heading/keyword/summary |
+| `get_doc_section(workspace_id, artifact_id, doc_id, section_id, source_fingerprint, allowed_visibility)` | POST `/v1/get` | Get specific document or section |
 
 ## Environment Variables
 
@@ -112,7 +115,10 @@ voro-guard/
 │       ├── parser.py                 # Symbol extraction, 8 languages (169L)
 │       ├── safety.py                 # Symlink/secret/binary checks (70L)
 │       ├── signing.py                # HMAC-SHA256 signing (22L)
-│       └── store.py                  # Symbol indexing & querying (113L)
+│       ├── store.py                  # Symbol indexing & querying (113L)
+│       ├── docs_ingest.py            # Docs markdown discovery with safety checks (69L)
+│       ├── docs_parser.py            # Docs section extraction, metadata, visibility (249L)
+│       └── docs_store.py             # Docs payload assembly, search, retrieval, outline (312L)
 ├── data/
 │   └── artifacts/                    # Persisted signed artifacts (JSON)
 ├── docs/
@@ -120,15 +126,18 @@ voro-guard/
 ├── scripts/
 │   └── smoke_prod.sh                 # Production smoke test
 ├── tests/
-│   └── unit/                         # 8 test modules
+│   └── unit/                         # 11 test modules (67 tests)
 │       ├── test_auth.py              # Bearer token auth
 │       ├── test_callgraph.py         # Solidity call graph
 │       ├── test_github_indexer.py    # GitHub repo indexing
 │       ├── test_incremental_github_phaseb.py  # Incremental rebuild
 │       ├── test_indexer_runtime.py   # Local indexing + querying
-│       ├── test_mcp_server.py        # MCP server lifecycle
+│       ├── test_mcp_server.py        # MCP server lifecycle (code + docs tools)
 │       ├── test_perf_caps.py         # Performance limits
-│       └── test_trust_guard.py       # Artifact trust verification
+│       ├── test_trust_guard.py       # Artifact trust verification
+│       ├── test_docs_parser.py       # Docs parser: sections, metadata, visibility
+│       ├── test_docs_indexer_runtime.py  # Docs end-to-end: discover → parse → index → search → get → outline
+│       └── test_docs_trust_guard.py  # Docs trust: sign/verify round-trip, tamper detection
 ├── README.md
 ├── requirements.txt                  # Python deps (FastAPI, uvicorn, httpx, fastmcp, pydantic)
 ├── Dockerfile                        # Python 3.12-slim
@@ -182,6 +191,16 @@ voro-guard/
 | `visibility` | string | Solidity only: public, external, internal, private |
 | `payable` | bool | Solidity only |
 | `reachable` | bool | Solidity only — from call graph analysis |
+
+### Docs Artifact (`docs-v1`)
+
+Docs artifacts use `schema_version: "docs-v1"` and are created via `/v1/index` with `index_kind: "docs"`. They share the same signing, trust, and persistence infrastructure as code artifacts.
+
+Payload shape: `documents[]` (doc_id, path, title, status, class, authority, visibility) + `sections[]` (section_id, heading, heading_path, start_line, end_line, summary, keywords, visibility).
+
+Visibility tiers: `public`, `pro`, `enterprise`, `internal`. Document-level in v1; sections inherit parent document visibility. Retrieval interfaces filter by `allowed_visibility`.
+
+Binding spec: `voro-docs/DOCS_INDEXING_SPEC.md`.
 
 ## Supported Languages
 
