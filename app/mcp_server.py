@@ -194,7 +194,7 @@ mcp = FastMCP(
         "get_symbol to retrieve full details for a specific symbol ID, "
         "outline_file to list all symbols in a repository artifact, "
         "and index_repo to trigger indexing of a repository. "
-        "For docs artifacts, use index_docs, search_docs, and get_doc_section."
+        "For docs artifacts, use index_docs, search_docs, get_doc_section, and outline_docs."
     ),
     lifespan=_lifespan,
 )
@@ -432,6 +432,36 @@ def get_doc_section(
     if allowed_visibility:
         body["allowed_visibility"] = allowed_visibility
     return _post("/v1/get", body)
+
+
+@mcp.tool()
+def outline_docs(
+    workspace_id: str,
+    artifact_id: str,
+    source_fingerprint: str = "",
+    allowed_visibility: list[str] | None = None,
+) -> dict[str, Any]:
+    """
+    Return a structured outline of documents and sections in a signed docs artifact.
+
+    Args:
+        workspace_id: Workspace identifier that owns the artifact.
+        artifact_id: Docs artifact identifier returned by index_docs.
+        source_fingerprint: Source fingerprint (sha256:...) from the index response.
+        allowed_visibility: Optional allowed document visibility tiers to filter results.
+
+    Returns:
+        JSON response with summary counts and per-document section outlines.
+    """
+    body: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "artifact_id": artifact_id,
+    }
+    if source_fingerprint:
+        body["source_fingerprint"] = source_fingerprint
+    if allowed_visibility:
+        body["allowed_visibility"] = allowed_visibility
+    return _post("/v1/outline", body)
 
 
 # ---------------------------------------------------------------------------

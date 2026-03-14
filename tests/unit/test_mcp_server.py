@@ -10,6 +10,7 @@ Tests cover:
   - index_docs proxies to /v1/index with docs mode
   - search_docs proxies to /v1/search with optional visibility
   - get_doc_section proxies to /v1/get with doc_id or section_id
+  - outline_docs proxies to /v1/outline with optional visibility
   - source_fingerprint is forwarded when provided
   - optional fields are omitted from request body when empty
   - HTTP 4xx errors are converted to RuntimeError with reason_code
@@ -386,6 +387,41 @@ def test_get_doc_section_requires_doc_id_or_section_id():
             artifact_id="art1",
         )
     assert "doc_id_or_section_id_required" in str(exc_info.value)
+
+
+def test_outline_docs_proxies_to_v1_outline_with_visibility():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "results": {"documents": []}}
+    with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/outline")) as mock:
+        result = mod.outline_docs(
+            workspace_id="ws1",
+            artifact_id="art1",
+            source_fingerprint="sha256:docs",
+            allowed_visibility=["public", "pro"],
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "/v1/outline" in mock.call_args.args[0]
+    assert body["workspace_id"] == "ws1"
+    assert body["artifact_id"] == "art1"
+    assert body["source_fingerprint"] == "sha256:docs"
+    assert body["allowed_visibility"] == ["public", "pro"]
+    assert result == expected
+
+
+def test_outline_docs_omits_optional_fields_when_empty():
+    import app.mcp_server as mod
+
+    with _mock_post(_make_response(200, {"ok": True, "results": {"documents": []}}, url="http://127.0.0.1:18765/v1/outline")) as mock:
+        mod.outline_docs(
+            workspace_id="ws1",
+            artifact_id="art1",
+            source_fingerprint="",
+            allowed_visibility=None,
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "source_fingerprint" not in body
+    assert "allowed_visibility" not in body
 
 
 # ---------------------------------------------------------------------------
