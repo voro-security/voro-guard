@@ -9,8 +9,9 @@ from app.core.docs_ingest import discover_local_docs
 from app.core.docs_parser import parse_markdown_document
 from app.core.docs_store import build_docs_payload
 from app.config import settings
-from app.models.schemas import IndexRequest
+from app.models.schemas import GetRequest, IndexRequest, OutlineRequest
 from app.routes.index import create_index
+from app.routes.query import get_outline, get_symbol
 
 
 def test_discover_local_docs_and_build_payload(tmp_path: Path) -> None:
@@ -83,3 +84,80 @@ def test_create_index_supports_docs_artifact_flow(tmp_path: Path) -> None:
     assert indexed["payload"]["stats"]["section_count"] == 2
     assert indexed["payload"]["documents"][0]["path"] == "README.md"
     assert indexed["payload"]["documents"][0]["visibility"] == "internal"
+
+
+def test_docs_retrieval_and_outline_flow(tmp_path: Path) -> None:
+    settings.trust_mode = "strict"
+    settings.signing_key = "dev-signing-key"
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True, exist_ok=True)
+    (repo / "README.md").write_text("---\nvisibility: internal\n---\n# Intro\n\nHello.\n", encoding="utf-8")
+    (repo / "docs" / "guide.md").write_text("## Guide\n\nGuide body.\n", encoding="utf-8")
+
+    indexed = create_index(
+        IndexRequest(
+            workspace_id="ws1",
+            index_kind="docs",
+            source_type="local_repo",
+            source_id="repo",
+            source_revision="r1",
+            repo_ref=str(repo),
+        )
+    )
+
+    source_fingerprint = indexed["source_fingerprint"]
+    internal_doc = next(doc for doc in indexed["payload"]["documents"] if doc["path"] == "README.md")
+    internal_section = next(section for section in indexed["payload"]["sections"] if section["doc_id"] == internal_doc["doc_id"])
+    public_doc = next(doc for doc in indexed["payload"]["documents"] if doc["path"] == "docs/guide.md")
+
+    got_doc = get_symbol(
+        GetRequest(
+            workspace_id="ws1",
+            source_fingerprint=source_fingerprint,
+            artifact_id=indexed["artifact_id"],
+            doc_id=internal_doc["doc_id"],
+        )
+    )
+    assert got_doc["ok"] is True
+    assert got_doc["results"][0]["document"]["doc_id"] == internal_doc["doc_id"]
+    assert len(got_doc["results"][0]["sections"]) == 1
+
+    got_section = get_symbol(
+        GetRequest(
+            workspace_id="ws1",
+            source_fingerprint=source_fingerprint,
+            artifact_id=indexed["artifact_id"],
+            section_id=internal_section["section_id"],
+        )
+    )
+    assert got_section["ok"] is True
+    assert got_section["results"][0]["section"]["section_id"] == internal_section["section_id"]
+    assert got_section["results"][0]["document"]["doc_id"] == internal_doc["doc_id"]
+
+    filtered = get_symbol(
+        GetRequest(
+            workspace_id="ws1",
+            source_fingerprint=source_fingerprint,
+            artifact_id=indexed["artifact_id"],
+            doc_id=internal_doc["doc_id"],
+            allowed_visibility=["public"],
+        )
+    )
+    assert filtered["ok"] is True
+    assert filtered["results"] == []
+
+    outline = get_outline(
+        OutlineRequest(
+            workspace_id="ws1",
+            source_fingerprint=source_fingerprint,
+            artifact_id=indexed["artifact_id"],
+            allowed_visibility=["public"],
+        )
+    )
+    assert outline["ok"] is True
+    assert outline["results"]["summary"]["document_count"] == 1
+    assert outline["results"]["summary"]["section_count"] == 1
+    assert outline["results"]["documents"][0]["doc_id"] == public_doc["doc_id"]
+    assert outline["results"]["documents"][0]["sections"][0]["visibility"] == "public"

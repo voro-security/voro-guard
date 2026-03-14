@@ -5,11 +5,15 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import pytest
+from fastapi import HTTPException
+
 from app.config import settings
 from app.core.artifacts import load_artifact, persist_artifact, verify_artifact
 from app.core.docs_store import build_docs_payload
 from app.core.signing import canonical_json, sha256_hex, sign_hash
-from app.models.schemas import ArtifactEnvelope, Manifest
+from app.models.schemas import ArtifactEnvelope, GetRequest, Manifest, OutlineRequest
+from app.routes.query import get_outline, get_symbol
 
 
 def setup_function() -> None:
@@ -126,3 +130,36 @@ def test_docs_artifact_tamper_fails_hash_verification(tmp_path: Path) -> None:
     assert ok is False
     assert reason_code == "artifact_untrusted_hash_mismatch"
     assert trust_status == "artifact hash mismatch"
+
+
+def test_docs_query_routes_reject_tampered_artifact(tmp_path: Path) -> None:
+    envelope = _docs_envelope(tmp_path)
+    persist_artifact(envelope)
+    loaded = load_artifact("ws1", "sha256:docs", "docsartifact000001")
+    assert loaded is not None
+    loaded["payload"]["sections"][0]["summary"] = "tampered"
+    persist_artifact(loaded)
+
+    with pytest.raises(HTTPException) as doc_exc:
+        get_symbol(
+            GetRequest(
+                workspace_id="ws1",
+                source_fingerprint="sha256:docs",
+                artifact_id="docsartifact000001",
+                doc_id="doc-1",
+            )
+        )
+    assert doc_exc.value.status_code == 403
+    assert doc_exc.value.detail["reason_code"] == "artifact_untrusted_hash_mismatch"
+
+    with pytest.raises(HTTPException) as outline_exc:
+        get_outline(
+            OutlineRequest(
+                workspace_id="ws1",
+                source_fingerprint="sha256:docs",
+                artifact_id="docsartifact000001",
+                allowed_visibility=["public"],
+            )
+        )
+    assert outline_exc.value.status_code == 403
+    assert outline_exc.value.detail["reason_code"] == "artifact_untrusted_hash_mismatch"

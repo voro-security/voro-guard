@@ -4,6 +4,7 @@ from app.metrics import metrics
 from app.models.schemas import CallgraphRequest, GetRequest, OutlineRequest, QueryRequest, SearchRequest
 from app.core.artifacts import load_artifact, verify_artifact
 from app.core.callgraph import build_callgraph_from_file
+from app.core.docs_store import get_docs_entry, get_docs_outline
 from app.core.store import get_outline as build_outline
 from app.core.store import get_symbol as find_symbol
 from app.core.store import search_symbols as run_search
@@ -19,6 +20,8 @@ _REASON_STATUS = {
     "artifact_untrusted_hash_mismatch": 403,
     "artifact_untrusted_signature_invalid": 403,
     "artifact_identity_mismatch": 403,
+    "docs_search_not_supported": 422,
+    "doc_target_required": 400,
 }
 
 
@@ -27,10 +30,6 @@ def _execute_query(req: QueryRequest):
     if req.mode == "search" and not (req.query and req.query.strip()):
         metrics.record_deny("query_required")
         raise HTTPException(status_code=400, detail={"reason_code": "query_required", "message": "query is required"})
-    if req.mode == "get" and not (req.symbol_id and req.symbol_id.strip()):
-        metrics.record_deny("symbol_id_required")
-        raise HTTPException(status_code=400, detail={"reason_code": "symbol_id_required", "message": "symbol_id is required"})
-
     try:
         artifact = load_artifact(req.workspace_id, req.source_fingerprint or req.repo_fingerprint or "", req.artifact_id)
     except ValueError as exc:
@@ -55,13 +54,44 @@ def _execute_query(req: QueryRequest):
         raise HTTPException(status_code=status, detail={"reason_code": reason_code, "message": trust_status})
 
     payload = artifact.get("payload", {})
-    if req.mode == "search":
-        results = run_search(payload, req.query or "")
-    elif req.mode == "get":
-        symbol = find_symbol(payload, req.symbol_id or "")
-        results = [symbol] if symbol else []
+    is_docs_artifact = artifact.get("schema_version") == "docs-v1"
+    if is_docs_artifact:
+        if req.mode == "search":
+            metrics.record_deny("docs_search_not_supported")
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "reason_code": "docs_search_not_supported",
+                    "message": "docs search is not supported in this slice",
+                },
+            )
+        if req.mode == "get":
+            if not (req.doc_id or req.section_id):
+                metrics.record_deny("doc_target_required")
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "reason_code": "doc_target_required",
+                        "message": "doc_id or section_id is required for docs artifacts",
+                    },
+                )
+            entry = get_docs_entry(
+                payload,
+                doc_id=req.doc_id,
+                section_id=req.section_id,
+                allowed_visibility=req.allowed_visibility,
+            )
+            results = [entry] if entry else []
+        else:
+            results = get_docs_outline(payload, allowed_visibility=req.allowed_visibility)
     else:
-        results = build_outline(payload)
+        if req.mode == "search":
+            results = run_search(payload, req.query or "")
+        elif req.mode == "get":
+            symbol = find_symbol(payload, req.symbol_id or "")
+            results = [symbol] if symbol else []
+        else:
+            results = build_outline(payload)
 
     response = {
         "ok": True,
@@ -123,6 +153,9 @@ def get_symbol(req: GetRequest):
             artifact_id=req.artifact_id,
             mode="get",
             symbol_id=req.symbol_id,
+            doc_id=req.doc_id,
+            section_id=req.section_id,
+            allowed_visibility=req.allowed_visibility,
         )
     )
 
@@ -136,6 +169,7 @@ def get_outline(req: OutlineRequest):
             repo_fingerprint=req.repo_fingerprint,
             artifact_id=req.artifact_id,
             mode="outline",
+            allowed_visibility=req.allowed_visibility,
         )
     )
 

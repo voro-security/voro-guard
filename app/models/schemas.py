@@ -63,6 +63,9 @@ class QueryRequest(BaseModel):
     artifact_id: str = Field(min_length=1)
     query: Optional[str] = None
     symbol_id: Optional[str] = None
+    doc_id: Optional[str] = None
+    section_id: Optional[str] = None
+    allowed_visibility: Optional[list[Literal["public", "pro", "enterprise", "internal"]]] = None
     mode: Literal["search", "get", "outline"] = "search"
 
     @model_validator(mode="after")
@@ -75,6 +78,8 @@ class QueryRequest(BaseModel):
             self.repo_fingerprint = self.source_fingerprint
         if self.source_type and not self.source_id:
             raise ValueError("source_identity_invalid")
+        if self.mode == "get" and not any([self.symbol_id, self.doc_id, self.section_id]):
+            raise ValueError("get_target_required")
         return self
 
 
@@ -101,7 +106,10 @@ class GetRequest(BaseModel):
     source_fingerprint: Optional[str] = None
     repo_fingerprint: Optional[str] = None
     artifact_id: str = Field(min_length=1)
-    symbol_id: str = Field(min_length=1)
+    symbol_id: Optional[str] = None
+    doc_id: Optional[str] = None
+    section_id: Optional[str] = None
+    allowed_visibility: Optional[list[Literal["public", "pro", "enterprise", "internal"]]] = None
 
     @model_validator(mode="after")
     def compat(self) -> "GetRequest":
@@ -111,6 +119,8 @@ class GetRequest(BaseModel):
             self.source_fingerprint = self.repo_fingerprint
         if not self.repo_fingerprint:
             self.repo_fingerprint = self.source_fingerprint
+        if not any([self.symbol_id, self.doc_id, self.section_id]):
+            raise ValueError("get_target_required")
         return self
 
 
@@ -119,6 +129,7 @@ class OutlineRequest(BaseModel):
     source_fingerprint: Optional[str] = None
     repo_fingerprint: Optional[str] = None
     artifact_id: str = Field(min_length=1)
+    allowed_visibility: Optional[list[Literal["public", "pro", "enterprise", "internal"]]] = None
 
     @model_validator(mode="after")
     def compat(self) -> "OutlineRequest":
