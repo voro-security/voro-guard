@@ -7,6 +7,9 @@ Tests cover:
   - get_symbol proxies to /v1/get
   - outline_file proxies to /v1/outline
   - index_repo proxies to /v1/index
+  - index_docs proxies to /v1/index with docs mode
+  - search_docs proxies to /v1/search with optional visibility
+  - get_doc_section proxies to /v1/get with doc_id or section_id
   - source_fingerprint is forwarded when provided
   - optional fields are omitted from request body when empty
   - HTTP 4xx errors are converted to RuntimeError with reason_code
@@ -272,6 +275,117 @@ def test_transport_error_raises_runtime_error():
         with pytest.raises(RuntimeError) as exc_info:
             mod.get_symbol(symbol_id="x", workspace_id="ws1", artifact_id="art1")
     assert "unreachable" in str(exc_info.value).lower()
+
+
+# ---------------------------------------------------------------------------
+# Docs tools
+# ---------------------------------------------------------------------------
+
+
+def test_index_docs_proxies_to_v1_index_with_docs_mode():
+    import app.mcp_server as mod
+
+    expected = {
+        "ok": True,
+        "artifact_id": "docs-artifact-1",
+        "source_fingerprint": "sha256:docs",
+    }
+    with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/index")) as mock:
+        result = mod.index_docs(
+            source_type="local_repo",
+            source_id="/repo",
+            workspace_id="ws1",
+            source_revision="r1",
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "/v1/index" in mock.call_args.args[0]
+    assert body["index_kind"] == "docs"
+    assert body["source_type"] == "local_repo"
+    assert body["source_id"] == "/repo"
+    assert body["source_revision"] == "r1"
+    assert result == expected
+
+
+def test_search_docs_proxies_to_v1_search_with_visibility():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "results": [{"section_id": "sec-1"}]}
+    with _mock_post(_make_response(200, expected)) as mock:
+        result = mod.search_docs(
+            query="intro",
+            workspace_id="ws1",
+            artifact_id="art1",
+            source_fingerprint="sha256:docs",
+            allowed_visibility=["public", "pro"],
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "/v1/search" in mock.call_args.args[0]
+    assert body["query"] == "intro"
+    assert body["source_fingerprint"] == "sha256:docs"
+    assert body["allowed_visibility"] == ["public", "pro"]
+    assert result == expected
+
+
+def test_search_docs_omits_optional_fields_when_empty():
+    import app.mcp_server as mod
+
+    with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
+        mod.search_docs(
+            query="intro",
+            workspace_id="ws1",
+            artifact_id="art1",
+            source_fingerprint="",
+            allowed_visibility=None,
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "source_fingerprint" not in body
+    assert "allowed_visibility" not in body
+
+
+def test_get_doc_section_proxies_to_v1_get_by_doc_id():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "results": [{"document": {"doc_id": "doc-1"}}]}
+    with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/get")) as mock:
+        result = mod.get_doc_section(
+            workspace_id="ws1",
+            artifact_id="art1",
+            doc_id="doc-1",
+            source_fingerprint="sha256:docs",
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "/v1/get" in mock.call_args.args[0]
+    assert body["doc_id"] == "doc-1"
+    assert body["source_fingerprint"] == "sha256:docs"
+    assert "section_id" not in body
+    assert result == expected
+
+
+def test_get_doc_section_proxies_to_v1_get_by_section_id_with_visibility():
+    import app.mcp_server as mod
+
+    with _mock_post(_make_response(200, {"ok": True, "results": []}, url="http://127.0.0.1:18765/v1/get")) as mock:
+        mod.get_doc_section(
+            workspace_id="ws1",
+            artifact_id="art1",
+            section_id="sec-1",
+            allowed_visibility=["enterprise"],
+        )
+    body = mock.call_args.kwargs["json"]
+    assert body["section_id"] == "sec-1"
+    assert body["allowed_visibility"] == ["enterprise"]
+    assert "doc_id" not in body
+
+
+def test_get_doc_section_requires_doc_id_or_section_id():
+    import app.mcp_server as mod
+
+    with pytest.raises(ValueError) as exc_info:
+        mod.get_doc_section(
+            workspace_id="ws1",
+            artifact_id="art1",
+        )
+    assert "doc_id_or_section_id_required" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
