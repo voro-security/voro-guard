@@ -255,3 +255,171 @@ def test_hydrate_with_real_system_state_payload(tmp_path: Path) -> None:
     # read_next should contain authoritative ref paths
     read_next = result.get("read_next") or []
     assert "EXECUTION_CONTRACT.md" in read_next
+
+
+# --- Integration: work-state publisher → hydrate round-trip ---
+
+
+def _make_work_state(
+    agent_id: str,
+    repo: str,
+    worktree_path: str,
+    objective: str,
+    *,
+    workspace_root: str = "/home/user/dev/voro",
+    updated_at: str | None = None,
+) -> dict:
+    """Build a work-state.v1 payload matching publish_work_state.py output."""
+    return {
+        "schema_version": "work-state-v1",
+        "agent_id": agent_id,
+        "workspace_root": workspace_root,
+        "repo": repo,
+        "worktree_path": worktree_path,
+        "updated_at": updated_at or _now_iso(),
+        "current_objective": objective,
+    }
+
+
+def test_hydrate_returns_correct_work_state_by_identity(tmp_path: Path) -> None:
+    """Hydration returns the correct work-state for the requested identity key.
+
+    Publishes two work-states with different identity keys (same repo,
+    different worktrees) and verifies hydration returns the right one.
+    """
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "identity-ws"
+
+    # Agent in main worktree
+    main_state = _make_work_state(
+        "claude_1", "voro-brain", "/home/user/dev/voro/voro-brain",
+        "Phase 1 evidence collection",
+    )
+    _publish_state(tmp_path, ws, "claude_1-voro-brain", "work-state", main_state)
+
+    # Same agent in a feature worktree
+    feat_state = _make_work_state(
+        "claude_1", "voro-brain", "/tmp/worktree-feat-hydration",
+        "Phase 2C hydration slice 3",
+    )
+    _publish_state(tmp_path, ws, "claude_1-voro-brain-feat", "work-state", feat_state)
+
+    # Request main worktree — should get main objective
+    result = hydrate_session(
+        workspace_id=ws, agent_id="claude_1", repo="voro-brain",
+        worktree_path="/home/user/dev/voro/voro-brain",
+    )
+    assert result["work_state"] is not None
+    assert result["work_state"]["current_objective"] == "Phase 1 evidence collection"
+    assert result["work_state"]["worktree_path"] == "/home/user/dev/voro/voro-brain"
+
+    # Request feature worktree — should get feature objective
+    result2 = hydrate_session(
+        workspace_id=ws, agent_id="claude_1", repo="voro-brain",
+        worktree_path="/tmp/worktree-feat-hydration",
+    )
+    assert result2["work_state"] is not None
+    assert result2["work_state"]["current_objective"] == "Phase 2C hydration slice 3"
+
+
+def test_hydrate_stale_work_state_warns(tmp_path: Path) -> None:
+    """A work-state older than 2 hours is stale; hydration warns."""
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "stale-ws"
+
+    stale_time = (datetime.now(timezone.utc) - timedelta(hours=5)).isoformat()
+    stale_state = _make_work_state(
+        "claude_1", "voro-brain", "/home/user/dev/voro/voro-brain",
+        "stale objective", updated_at=stale_time,
+    )
+    _publish_state(tmp_path, ws, "claude_1-voro-brain", "work-state", stale_state)
+
+    result = hydrate_session(workspace_id=ws, agent_id="claude_1", repo="voro-brain")
+    assert result["work_state"] is not None
+    assert result["work_state"]["current_objective"] == "stale objective"
+    # Overall freshness should reflect staleness
+    assert result["freshness_status"] in ("stale", "degraded")
+    warnings = result.get("warnings") or []
+    assert any("work-state" in w and "stale" in w for w in warnings)
+
+
+def test_hydrate_expired_work_state_degrades(tmp_path: Path) -> None:
+    """A work-state >7 days old is expired; hydration degrades."""
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "expired-ws"
+
+    expired_time = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+    expired_state = _make_work_state(
+        "claude_1", "voro-brain", "/home/user/dev/voro/voro-brain",
+        "ancient objective", updated_at=expired_time,
+    )
+    _publish_state(tmp_path, ws, "claude_1-voro-brain", "work-state", expired_state)
+
+    result = hydrate_session(workspace_id=ws, agent_id="claude_1", repo="voro-brain")
+    assert result["work_state"] is not None
+    assert result["freshness_status"] == "degraded"
+    warnings = result.get("warnings") or []
+    assert any("expired" in w for w in warnings)
+
+
+def test_hydrate_filters_work_state_by_workspace_root(tmp_path: Path) -> None:
+    """workspace_root is part of the identity key; filtering must honor it."""
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "wsroot-ws"
+
+    # Same agent+repo+worktree_path, but different workspace_root
+    state_a = _make_work_state(
+        "claude_1", "voro-brain", "/workspace-a/voro-brain",
+        "work in workspace A", workspace_root="/workspace-a",
+    )
+    _publish_state(tmp_path, ws, "claude_1-voro-brain-a", "work-state", state_a)
+
+    state_b = _make_work_state(
+        "claude_1", "voro-brain", "/workspace-b/voro-brain",
+        "work in workspace B", workspace_root="/workspace-b",
+    )
+    _publish_state(tmp_path, ws, "claude_1-voro-brain-b", "work-state", state_b)
+
+    # Filter by workspace_root A
+    result_a = hydrate_session(
+        workspace_id=ws, agent_id="claude_1", repo="voro-brain",
+        workspace_root="/workspace-a",
+    )
+    assert result_a["work_state"] is not None
+    assert result_a["work_state"]["workspace_root"] == "/workspace-a"
+    assert result_a["work_state"]["current_objective"] == "work in workspace A"
+
+    # Filter by workspace_root B
+    result_b = hydrate_session(
+        workspace_id=ws, agent_id="claude_1", repo="voro-brain",
+        workspace_root="/workspace-b",
+    )
+    assert result_b["work_state"] is not None
+    assert result_b["work_state"]["workspace_root"] == "/workspace-b"
+    assert result_b["work_state"]["current_objective"] == "work in workspace B"
+
+    # Filter by nonexistent workspace_root — no match
+    result_none = hydrate_session(
+        workspace_id=ws, agent_id="claude_1", repo="voro-brain",
+        workspace_root="/workspace-c",
+    )
+    assert result_none["work_state"] is None
+
+
+def test_hydrate_missing_work_state_degrades_gracefully(tmp_path: Path) -> None:
+    """When no work-state matches the identity, hydration degrades gracefully."""
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "no-work-ws"
+
+    # Publish a work-state for a different agent
+    other_state = _make_work_state(
+        "codex_1", "voro-scan", "/home/user/dev/voro/voro-scan",
+        "unrelated work",
+    )
+    _publish_state(tmp_path, ws, "codex_1-voro-scan", "work-state", other_state)
+
+    # Request for claude_1 in voro-brain — no match
+    result = hydrate_session(workspace_id=ws, agent_id="claude_1", repo="voro-brain")
+    assert result["work_state"] is None
+    warnings = result.get("warnings") or []
+    assert any("no work-state" in w for w in warnings)

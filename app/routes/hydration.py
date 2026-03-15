@@ -78,8 +78,13 @@ def _filter_work_state(
     agent_id: str | None,
     repo: str | None,
     worktree_path: str | None,
+    workspace_root: str | None = None,
 ) -> dict[str, Any] | None:
-    """Find the best matching work-state by identity key."""
+    """Find the best matching work-state by identity key.
+
+    Identity key per spec Section 6: (workspace_root, repo, worktree_path, agent_id).
+    All four fields are filtered when provided.
+    """
     for artifact in candidates:
         payload = artifact.get("payload", {})
         state = payload.get("payload", payload)
@@ -92,6 +97,8 @@ def _filter_work_state(
         if repo and state.get("repo") != repo:
             continue
         if worktree_path and state.get("worktree_path") != worktree_path:
+            continue
+        if workspace_root and state.get("workspace_root") != workspace_root:
             continue
         # Check expiry
         updated = _parse_timestamp(
@@ -112,6 +119,7 @@ def hydrate_session(
     agent_id: str | None = None,
     repo: str | None = None,
     worktree_path: str | None = None,
+    workspace_root: str | None = None,
     authorization: str | None = Header(default=None),
 ):
     """Assemble a hydration response from stored state artifacts.
@@ -172,7 +180,7 @@ def hydrate_session(
             work_candidates.append(artifact)
 
     # Find best matching work-state
-    work_state = _filter_work_state(work_candidates, agent_id, repo, worktree_path)
+    work_state = _filter_work_state(work_candidates, agent_id, repo, worktree_path, workspace_root)
     if work_state:
         if work_state.get("_expired"):
             warnings.append("work-state is expired (>7 days without update)")
