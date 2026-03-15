@@ -423,3 +423,87 @@ def test_hydrate_missing_work_state_degrades_gracefully(tmp_path: Path) -> None:
     assert result["work_state"] is None
     warnings = result.get("warnings") or []
     assert any("no work-state" in w for w in warnings)
+
+
+# --- Integration: repo-state publisher → hydrate round-trip ---
+
+
+def test_hydrate_returns_published_repo_state(tmp_path: Path) -> None:
+    """Publish a repo-state.v1 payload, then verify hydration returns it fresh."""
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "repo-state-ws"
+
+    repo_state_payload = {
+        "schema_version": "repo-state-v1",
+        "repo": "voro-brain",
+        "captured_at": _now_iso(),
+        "branch": "main",
+        "head_sha": "abc1234def5678",
+        "dirty": False,
+        "important_boundaries": [
+            "src/ingestion/agent_builder_adapter.py",
+            "src/models/threat_report.py",
+        ],
+    }
+    _publish_state(tmp_path, ws, "voro-brain", "repo-state", repo_state_payload)
+
+    result = hydrate_session(workspace_id=ws, repo="voro-brain")
+    assert result["ok"] is True
+    assert len(result["repo_states"]) == 1
+
+    rs = result["repo_states"][0]
+    assert rs["schema_version"] == "repo-state-v1"
+    assert rs["repo"] == "voro-brain"
+    assert rs["branch"] == "main"
+    assert rs["head_sha"] == "abc1234def5678"
+    assert rs["dirty"] is False
+    assert "src/ingestion/agent_builder_adapter.py" in rs["important_boundaries"]
+
+    # No "no repo-state" warning
+    warnings = result.get("warnings") or []
+    assert not any("no repo-state" in w for w in warnings)
+
+
+def test_hydrate_filters_repo_state_by_repo(tmp_path: Path) -> None:
+    """Hydration returns only repo-states matching the requested repo."""
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "multi-repo-ws"
+
+    # Publish two different repo-states
+    _publish_state(tmp_path, ws, "voro-brain", "repo-state", {
+        "schema_version": "repo-state-v1",
+        "repo": "voro-brain",
+        "captured_at": _now_iso(),
+        "branch": "main",
+        "head_sha": "brain123",
+        "dirty": False,
+    })
+    _publish_state(tmp_path, ws, "voro-guard", "repo-state", {
+        "schema_version": "repo-state-v1",
+        "repo": "voro-guard",
+        "captured_at": _now_iso(),
+        "branch": "feat/slice4",
+        "head_sha": "guard456",
+        "dirty": True,
+    })
+
+    # Request for voro-brain only
+    result = hydrate_session(workspace_id=ws, repo="voro-brain")
+    assert len(result["repo_states"]) == 1
+    assert result["repo_states"][0]["repo"] == "voro-brain"
+
+    # Request with no repo filter — get both
+    result_all = hydrate_session(workspace_id=ws)
+    assert len(result_all["repo_states"]) == 2
+
+
+def test_hydrate_missing_repo_state_degrades_gracefully(tmp_path: Path) -> None:
+    """When no repo-state exists, hydration warns but doesn't fail."""
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "no-repo-state-ws"
+
+    result = hydrate_session(workspace_id=ws)
+    assert result["ok"] is True
+    assert result["repo_states"] == []
+    warnings = result.get("warnings") or []
+    assert any("no repo-state" in w for w in warnings)
