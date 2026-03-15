@@ -362,6 +362,50 @@ def test_hydrate_expired_work_state_degrades(tmp_path: Path) -> None:
     assert any("expired" in w for w in warnings)
 
 
+def test_hydrate_filters_work_state_by_workspace_root(tmp_path: Path) -> None:
+    """workspace_root is part of the identity key; filtering must honor it."""
+    settings.artifact_root = str(tmp_path / "artifacts")
+    ws = "wsroot-ws"
+
+    # Same agent+repo+worktree_path, but different workspace_root
+    state_a = _make_work_state(
+        "claude_1", "voro-brain", "/workspace-a/voro-brain",
+        "work in workspace A", workspace_root="/workspace-a",
+    )
+    _publish_state(tmp_path, ws, "claude_1-voro-brain-a", "work-state", state_a)
+
+    state_b = _make_work_state(
+        "claude_1", "voro-brain", "/workspace-b/voro-brain",
+        "work in workspace B", workspace_root="/workspace-b",
+    )
+    _publish_state(tmp_path, ws, "claude_1-voro-brain-b", "work-state", state_b)
+
+    # Filter by workspace_root A
+    result_a = hydrate_session(
+        workspace_id=ws, agent_id="claude_1", repo="voro-brain",
+        workspace_root="/workspace-a",
+    )
+    assert result_a["work_state"] is not None
+    assert result_a["work_state"]["workspace_root"] == "/workspace-a"
+    assert result_a["work_state"]["current_objective"] == "work in workspace A"
+
+    # Filter by workspace_root B
+    result_b = hydrate_session(
+        workspace_id=ws, agent_id="claude_1", repo="voro-brain",
+        workspace_root="/workspace-b",
+    )
+    assert result_b["work_state"] is not None
+    assert result_b["work_state"]["workspace_root"] == "/workspace-b"
+    assert result_b["work_state"]["current_objective"] == "work in workspace B"
+
+    # Filter by nonexistent workspace_root — no match
+    result_none = hydrate_session(
+        workspace_id=ws, agent_id="claude_1", repo="voro-brain",
+        workspace_root="/workspace-c",
+    )
+    assert result_none["work_state"] is None
+
+
 def test_hydrate_missing_work_state_degrades_gracefully(tmp_path: Path) -> None:
     """When no work-state matches the identity, hydration degrades gracefully."""
     settings.artifact_root = str(tmp_path / "artifacts")
