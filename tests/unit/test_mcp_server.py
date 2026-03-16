@@ -515,6 +515,30 @@ def test_list_learning_states_omits_empty_filters():
     assert params == {"workspace_id": "ws1", "limit": 100}
 
 
+def test_read_governance_report_proxies_to_governance_report_get():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "schema_version": "learning-v1"}
+    with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/governance-report")) as mock:
+        result = mod.read_governance_report(workspace_id="voro")
+    assert "/v1/governance-report" in mock.call_args.args[0]
+    params = mock.call_args.kwargs["params"]
+    assert params == {"workspace_id": "voro", "source_id": "github-governance"}
+    assert result == expected
+
+
+def test_list_governance_reports_proxies_to_governance_reports_get():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "items": []}
+    with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/governance-reports")) as mock:
+        result = mod.list_governance_reports(workspace_id="voro", limit=10)
+    assert "/v1/governance-reports" in mock.call_args.args[0]
+    params = mock.call_args.kwargs["params"]
+    assert params == {"workspace_id": "voro", "source_id": "github-governance", "limit": 10}
+    assert result == expected
+
+
 # ---------------------------------------------------------------------------
 # Auth header
 # ---------------------------------------------------------------------------

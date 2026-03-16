@@ -21,6 +21,8 @@ _REASON_STATUS = {
     "artifact_invalid": 422,
     "artifact_path_outside_root": 403,
 }
+GOVERNANCE_REPORT_SOURCE_ID = "github-governance"
+GOVERNANCE_REPORT_STATE_TYPE = "governance-report"
 
 
 def _now_utc() -> str:
@@ -98,6 +100,46 @@ def _verify_learning_artifact(artifact: dict[str, Any], workspace_id: str, artif
         artifact_id,
     )
     return ok, reason_code or trust_status
+
+
+def _matching_learning_artifacts(
+    *,
+    workspace_id: str,
+    source_id: str | None = None,
+    state_type: str | None = None,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    artifacts = _load_learning_state_candidates(workspace_id)
+    items: list[dict[str, Any]] = []
+    for artifact in artifacts:
+        artifact_id = str(artifact.get("artifact_id", ""))
+        if source_id and artifact.get("source_id") != source_id:
+            continue
+        artifact_payload = artifact.get("payload", {})
+        if state_type and artifact_payload.get("state_type") != state_type:
+            continue
+        ok, _ = _verify_learning_artifact(artifact, workspace_id, artifact_id)
+        if not ok:
+            continue
+        items.append(artifact)
+        if len(items) >= limit:
+            break
+    return items
+
+
+def _learning_state_summary(artifact: dict[str, Any]) -> dict[str, Any]:
+    artifact_payload = artifact.get("payload", {})
+    return {
+        "artifact_id": str(artifact.get("artifact_id", "")),
+        "artifact_version": artifact.get("artifact_version", 1),
+        "schema_version": artifact.get("schema_version"),
+        "source_id": artifact.get("source_id"),
+        "source_revision": artifact.get("source_revision"),
+        "source_fingerprint": artifact.get("source_fingerprint"),
+        "state_type": artifact_payload.get("state_type"),
+        "metadata": artifact_payload.get("metadata", {}),
+        "signed_at": artifact.get("manifest", {}).get("signed_at"),
+    }
 
 
 @router.post("/v1/learning-state")
@@ -217,37 +259,76 @@ def list_learning_states(
         return disabled
     require_auth(authorization)
     try:
-        artifacts = _load_learning_state_candidates(workspace_id)
+        artifacts = _matching_learning_artifacts(
+            workspace_id=workspace_id,
+            source_id=source_id,
+            state_type=state_type,
+            limit=limit,
+        )
     except ValueError as exc:
         raise _http_error_for_artifact_error(str(exc)) from exc
 
-    items: list[dict[str, Any]] = []
-    for artifact in artifacts:
-        artifact_id = str(artifact.get("artifact_id", ""))
-        if source_id and artifact.get("source_id") != source_id:
-            continue
-        artifact_payload = artifact.get("payload", {})
-        if state_type and artifact_payload.get("state_type") != state_type:
-            continue
-        ok, _ = _verify_learning_artifact(artifact, workspace_id, artifact_id)
-        if not ok:
-            continue
-        items.append(
-            {
-                "artifact_id": artifact_id,
-                "artifact_version": artifact.get("artifact_version", 1),
-                "schema_version": artifact.get("schema_version"),
-                "source_id": artifact.get("source_id"),
-                "source_revision": artifact.get("source_revision"),
-                "source_fingerprint": artifact.get("source_fingerprint"),
-                "state_type": artifact_payload.get("state_type"),
-                "metadata": artifact_payload.get("metadata", {}),
-                "signed_at": artifact.get("manifest", {}).get("signed_at"),
-            }
-        )
-        if len(items) >= limit:
-            break
+    items = [_learning_state_summary(artifact) for artifact in artifacts]
 
+    return {
+        "ok": True,
+        "reason_code": "learning_state_success",
+        "items": items,
+        "count": len(items),
+    }
+
+
+@router.get("/v1/governance-report")
+def read_governance_report(
+    workspace_id: str = Query(min_length=1),
+    source_id: str = GOVERNANCE_REPORT_SOURCE_ID,
+    authorization: str | None = Header(default=None),
+):
+    disabled = _disabled_response()
+    if disabled is not None:
+        return disabled
+    require_auth(authorization)
+    try:
+        artifacts = _matching_learning_artifacts(
+            workspace_id=workspace_id,
+            source_id=source_id,
+            state_type=GOVERNANCE_REPORT_STATE_TYPE,
+            limit=1,
+        )
+    except ValueError as exc:
+        raise _http_error_for_artifact_error(str(exc)) from exc
+
+    if not artifacts:
+        raise HTTPException(
+            status_code=404,
+            detail={"reason_code": "artifact_missing", "message": "governance report not found"},
+        )
+
+    return {"ok": True, "reason_code": "learning_state_success", **artifacts[0]}
+
+
+@router.get("/v1/governance-reports")
+def list_governance_reports(
+    workspace_id: str = Query(min_length=1),
+    source_id: str = GOVERNANCE_REPORT_SOURCE_ID,
+    limit: int = Query(default=20, ge=1, le=500),
+    authorization: str | None = Header(default=None),
+):
+    disabled = _disabled_response()
+    if disabled is not None:
+        return disabled
+    require_auth(authorization)
+    try:
+        artifacts = _matching_learning_artifacts(
+            workspace_id=workspace_id,
+            source_id=source_id,
+            state_type=GOVERNANCE_REPORT_STATE_TYPE,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise _http_error_for_artifact_error(str(exc)) from exc
+
+    items = [_learning_state_summary(artifact) for artifact in artifacts]
     return {
         "ok": True,
         "reason_code": "learning_state_success",

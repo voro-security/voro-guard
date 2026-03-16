@@ -208,6 +208,7 @@ mcp = FastMCP(
         "and index_repo to trigger indexing of a repository. "
         "For docs artifacts, use index_docs, search_docs, get_doc_section, and outline_docs. "
         "For adaptive learning backplane state, use publish_learning_state, read_learning_state, and list_learning_states. "
+        "For the derived GitHub governance drift report, use read_governance_report and list_governance_reports. "
         "For session resume after compaction, use hydrate_session."
     ),
     lifespan=_lifespan,
@@ -556,6 +557,50 @@ def list_learning_states(
     if state_type:
         params["state_type"] = state_type
     return _get("/v1/learning-states", params)
+
+
+@mcp.tool()
+def read_governance_report(
+    workspace_id: str,
+    source_id: str = "github-governance",
+) -> dict[str, Any]:
+    """
+    Read the latest published GitHub governance drift report.
+
+    Args:
+        workspace_id: Workspace identifier that owns the artifact.
+        source_id: Governance report source identifier. Defaults to the fleet governance source.
+
+    Returns:
+        JSON response containing the signed governance report envelope.
+    """
+    params: dict[str, Any] = {"workspace_id": workspace_id, "source_id": source_id}
+    return _get("/v1/governance-report", params)
+
+
+@mcp.tool()
+def list_governance_reports(
+    workspace_id: str,
+    source_id: str = "github-governance",
+    limit: int = 20,
+) -> dict[str, Any]:
+    """
+    List published GitHub governance drift report summaries.
+
+    Args:
+        workspace_id: Workspace identifier that owns the artifacts.
+        source_id: Governance report source identifier. Defaults to the fleet governance source.
+        limit: Maximum number of items to return.
+
+    Returns:
+        JSON response with governance report summaries.
+    """
+    params: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "source_id": source_id,
+        "limit": limit,
+    }
+    return _get("/v1/governance-reports", params)
 
 
 @mcp.tool()
