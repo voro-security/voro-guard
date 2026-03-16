@@ -38,7 +38,11 @@ def _parse_timestamp(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        # Ensure timezone-aware (naive timestamps treated as UTC)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     except (ValueError, TypeError):
         return None
 
@@ -106,7 +110,7 @@ def _filter_work_state(
             or artifact.get("manifest", {}).get("signed_at")
         )
         if updated:
-            age_days = (datetime.now(timezone.utc) - updated).days
+            age_days = (datetime.now(timezone.utc) - updated).total_seconds() / 86400
             if age_days > _WORK_STATE_EXPIRY_DAYS:
                 return {**state, "_expired": True}
         return state
