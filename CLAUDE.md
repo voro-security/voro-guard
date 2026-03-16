@@ -53,6 +53,7 @@ voro-brain (ExploitabilityAssessor)
 | POST | `/v1/get` | Get symbol by ID (code) or doc/section by ID (docs) | Bearer |
 | POST | `/v1/outline` | List files/symbols (code) or documents/sections (docs) | Bearer |
 | POST | `/v1/callgraph` | Build Solidity call graph from file | Bearer |
+| GET | `/v1/hydrate` | Assemble hydration response (system/repo/work state) | Bearer |
 | GET | `/v1/metrics` | Service metrics snapshot | Bearer |
 
 ## MCP Tools (exposed via stdio)
@@ -70,6 +71,7 @@ voro-brain (ExploitabilityAssessor)
 | `publish_learning_state(workspace_id, source_id, state_type, payload, metadata)` | POST `/v1/learning-state` | Publish adaptive-learning state |
 | `read_learning_state(workspace_id, artifact_id)` | GET `/v1/learning-state/{artifact_id}` | Read adaptive-learning state |
 | `list_learning_states(workspace_id, source_id, state_type, limit)` | GET `/v1/learning-states` | List adaptive-learning state artifacts |
+| `hydrate_session(workspace_id, agent_id, repo, worktree_path, workspace_root)` | GET `/v1/hydrate` | Assemble session resume state bundle |
 
 ## Environment Variables
 
@@ -113,6 +115,7 @@ voro-guard/
 │   ├── routes/
 │   │   ├── index.py                  # POST /v1/index, artifact signing (125L)
 │   │   ├── learning.py               # Adaptive-learning backplane publish/read/list routes
+│   │   ├── hydration.py              # Hydration plane — session resume protocol (GET /v1/hydrate)
 │   │   └── query.py                  # Search/get/outline/metrics/callgraph (160L)
 │   └── core/                         # Business logic
 │       ├── artifacts.py              # Artifact persistence & verification (130L)
@@ -134,7 +137,7 @@ voro-guard/
 ├── scripts/
 │   └── smoke_prod.sh                 # Production smoke test
 ├── tests/
-│   └── unit/                         # 11 test modules (67 tests)
+│   └── unit/                         # 12 test modules (85 tests)
 │       ├── test_auth.py              # Bearer token auth
 │       ├── test_callgraph.py         # Solidity call graph
 │       ├── test_github_indexer.py    # GitHub repo indexing
@@ -145,7 +148,8 @@ voro-guard/
 │       ├── test_trust_guard.py       # Artifact trust verification
 │       ├── test_docs_parser.py       # Docs parser: sections, metadata, visibility
 │       ├── test_docs_indexer_runtime.py  # Docs end-to-end: discover → parse → index → search → get → outline
-│       └── test_docs_trust_guard.py  # Docs trust: sign/verify round-trip, tamper detection
+│       ├── test_docs_trust_guard.py  # Docs trust: sign/verify round-trip, tamper detection
+│       └── test_hydration.py         # Hydration plane: freshness, state assembly, identity filtering
 ├── README.md
 ├── requirements.txt                  # Python deps (FastAPI, uvicorn, httpx, fastmcp, pydantic)
 ├── Dockerfile                        # Python 3.12-slim

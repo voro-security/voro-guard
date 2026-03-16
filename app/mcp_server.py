@@ -207,7 +207,8 @@ mcp = FastMCP(
         "outline_file to list all symbols in a repository artifact, "
         "and index_repo to trigger indexing of a repository. "
         "For docs artifacts, use index_docs, search_docs, get_doc_section, and outline_docs. "
-        "For adaptive learning backplane state, use publish_learning_state, read_learning_state, and list_learning_states."
+        "For adaptive learning backplane state, use publish_learning_state, read_learning_state, and list_learning_states. "
+        "For session resume after compaction, use hydrate_session."
     ),
     lifespan=_lifespan,
 )
@@ -555,6 +556,39 @@ def list_learning_states(
     if state_type:
         params["state_type"] = state_type
     return _get("/v1/learning-states", params)
+
+
+@mcp.tool()
+def hydrate_session(
+    workspace_id: str,
+    agent_id: str = "",
+    repo: str = "",
+    worktree_path: str = "",
+) -> dict[str, Any]:
+    """
+    Resume a session after compaction by assembling signed state artifacts.
+
+    Returns system-state, repo-state(s), and work-state with freshness
+    calculation. Falls back gracefully when state is missing or stale.
+
+    Args:
+        workspace_id: Workspace identifier for state lookup.
+        agent_id: Optional agent identifier for work-state matching.
+        repo: Optional repo name to filter repo-states and work-state.
+        worktree_path: Optional worktree path for work-state identity.
+
+    Returns:
+        Hydration response with freshness_status, assembled states,
+        read_next pointers, and warnings.
+    """
+    params: dict[str, Any] = {"workspace_id": workspace_id}
+    if agent_id:
+        params["agent_id"] = agent_id
+    if repo:
+        params["repo"] = repo
+    if worktree_path:
+        params["worktree_path"] = worktree_path
+    return _get("/v1/hydrate", params)
 
 
 # ---------------------------------------------------------------------------
