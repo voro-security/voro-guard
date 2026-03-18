@@ -8,7 +8,6 @@ functions, and internal imports. Outputs grouped-by-package Markdown.
 import ast
 import subprocess
 from collections import defaultdict
-from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -26,18 +25,6 @@ def source_revision() -> str:
         ).strip()
     except Exception:
         return "unknown"
-
-
-def generated_at() -> str:
-    """Return a deterministic generation timestamp for the current revision."""
-    try:
-        return subprocess.check_output(
-            ["git", "show", "-s", "--format=%cI", "HEAD"],
-            cwd=REPO_ROOT,
-            text=True,
-        ).strip()
-    except Exception:
-        return datetime.now(timezone.utc).isoformat()
 
 
 def parse_file(filepath: Path) -> dict:
@@ -108,7 +95,6 @@ def render_markdown(groups: dict[str, list[dict]]) -> str:
         "# Class: generated-reference",
         "# Authority: machine-generated",
         "# Generator: scripts/generate_codebase_map.py",
-        f"# Generated At: {generated_at()}",
         f"# Source Revision: {source_revision()}",
         "",
     ]
