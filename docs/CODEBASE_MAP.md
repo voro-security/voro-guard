@@ -6,8 +6,7 @@
 # Class: generated-reference
 # Authority: machine-generated
 # Generator: scripts/generate_codebase_map.py
-# Generated At: 2026-03-16T16:49:59-04:00
-# Source Revision: fde7f4b
+# Source Revision: e999761
 
 **23 files, 3,777 lines**
 
