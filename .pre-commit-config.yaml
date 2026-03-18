@@ -1,0 +1,19 @@
+repos:
+  - repo: local
+    hooks:
+      - id: derived-artifacts-pre-commit
+        name: "Derived Artifacts Pilot"
+        entry: python3 tools/derived_artifacts.py --mode pre-commit
+        language: system
+        files: ^(app/|scripts/generate_codebase_map\.py)
+        pass_filenames: false
+        stages: [pre-commit]
+        description: Regenerates and stages docs/CODEBASE_MAP.md via the fleet contract
+
+      - id: derived-artifacts-pre-push
+        name: "Derived Artifacts Pilot (pre-push)"
+        entry: python3 tools/derived_artifacts.py --mode pre-push
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        description: Blocks push if docs/CODEBASE_MAP.md drifts

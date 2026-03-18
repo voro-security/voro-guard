@@ -20,11 +20,14 @@ Prerequisites:
 
 - Python 3.12
 - `pip`
+- `pre-commit` (for local hook enforcement)
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install pre-commit
+pre-commit install --hook-type pre-commit --hook-type pre-push
 pytest tests/unit/
 ```
 
