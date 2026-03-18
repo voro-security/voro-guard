@@ -28,6 +28,18 @@ def source_revision() -> str:
         return "unknown"
 
 
+def generated_at() -> str:
+    """Return a deterministic generation timestamp for the current revision."""
+    try:
+        return subprocess.check_output(
+            ["git", "show", "-s", "--format=%cI", "HEAD"],
+            cwd=REPO_ROOT,
+            text=True,
+        ).strip()
+    except Exception:
+        return datetime.now(timezone.utc).isoformat()
+
+
 def parse_file(filepath: Path) -> dict:
     """Parse a single Python file and extract structural info."""
     rel = filepath.relative_to(REPO_ROOT)
@@ -96,7 +108,7 @@ def render_markdown(groups: dict[str, list[dict]]) -> str:
         "# Class: generated-reference",
         "# Authority: machine-generated",
         "# Generator: scripts/generate_codebase_map.py",
-        f"# Generated At: {datetime.now(timezone.utc).isoformat()}",
+        f"# Generated At: {generated_at()}",
         f"# Source Revision: {source_revision()}",
         "",
     ]

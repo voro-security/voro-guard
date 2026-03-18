@@ -14,6 +14,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate derived artifacts pilot
+        run: |
+          python3 tools/derived_artifacts.py --mode ci
+
       - name: Validate docs contract
         run: |
           python3 scripts/validate_docs_contract.py

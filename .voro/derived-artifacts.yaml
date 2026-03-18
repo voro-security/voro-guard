@@ -1,0 +1,33 @@
+version: 1
+runner_version: 1
+repo: voro-guard
+artifacts:
+  - id: codebase-map
+    description: Regenerate docs/CODEBASE_MAP.md from app structure
+    sources:
+      - app/**
+      - scripts/generate_codebase_map.py
+    generator:
+      - python3
+      - scripts/generate_codebase_map.py
+    outputs:
+      - docs/CODEBASE_MAP.md
+    auto_stage: true
+    deterministic: true
+    onboard_status: verified
+    timeout_seconds: 60
+    depends_on: []
+    enforcement:
+      pre_commit: autofix
+      pre_push: block
+      ci: block
+    requires:
+      commands:
+        - python3
+    validate:
+      - python3
+      - scripts/validate_docs_contract.py
+    setup_hint: Run python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+    cleanup_replaces:
+      ci:
+        - .github/workflows/docs.yml:manual freshness enforcement for docs/CODEBASE_MAP.md

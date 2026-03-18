@@ -6,36 +6,52 @@
 # Class: generated-reference
 # Authority: machine-generated
 # Generator: scripts/generate_codebase_map.py
-# Generated At: 2026-03-11T22:36:10.120247+00:00
-# Source Revision: 7e82c6e
+# Generated At: 2026-03-16T16:49:59-04:00
+# Source Revision: fde7f4b
 
-**17 files, 1,994 lines**
+**23 files, 3,777 lines**
 
 ## app/
 
-### `app/config.py` (18 lines)
+### `app/config.py` (21 lines)
 
 - **class Settings**
 
-### `app/main.py` (14 lines)
+### `app/main.py` (36 lines)
 
+- `lifespan()`
 - `health()`
 
 Internal imports:
+- `from app.config import settings`
+- `from app.routes.hydration import router`
 - `from app.routes.index import router`
+- `from app.routes.learning import router`
 - `from app.routes.query import router`
 
-### `app/mcp_server.py` (330 lines)
+### `app/mcp_server.py` (654 lines)
 
 - `_build_auth_headers()`
 - `_start_managed_server()`
 - `_stop_managed_server()`
+- `_request()`
 - `_post()`
+- `_get()`
 - `_lifespan()`
 - `search_symbols()`
 - `get_symbol()`
 - `outline_file()`
 - `index_repo()`
+- `index_docs()`
+- `search_docs()`
+- `get_doc_section()`
+- `outline_docs()`
+- `publish_learning_state()`
+- `read_learning_state()`
+- `list_learning_states()`
+- `read_governance_report()`
+- `list_governance_reports()`
+- `hydrate_session()`
 - `main()`
 
 ### `app/metrics.py` (73 lines)
@@ -67,7 +83,7 @@ Internal imports:
 - `from app.config import settings`
 - `from app.core.signing import canonical_json, sha256_hex, verify_signature`
 
-### `app/core/callgraph.py` (208 lines)
+### `app/core/callgraph.py` (228 lines)
 
 - **class FunctionCall**
 - **class SolidityFunction**
@@ -76,10 +92,43 @@ Internal imports:
 - `_visibility_for()`
 - `_is_payable()`
 - `parse_solidity_functions()`
+- `_propagate_reachability()`
 - `build_callgraph()`
 - `build_callgraph_from_file()`
 
-### `app/core/identity.py` (70 lines)
+### `app/core/docs_ingest.py` (69 lines)
+
+- `_matches_any()`
+- `discover_local_docs()`
+
+Internal imports:
+- `from app.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root`
+
+### `app/core/docs_parser.py` (249 lines)
+
+- `_strip_quotes()`
+- `_parse_frontmatter()`
+- `_parse_voro_headers()`
+- `_heading_match()`
+- `_section_id()`
+- `_summarize()`
+- `_keywords()`
+- `parse_markdown_document()`
+
+### `app/core/docs_store.py` (311 lines)
+
+- `build_docs_payload()`
+- `build_docs_payload_from_repo()`
+- `_visibility_allowed()`
+- `get_docs_entry()`
+- `get_docs_outline()`
+- `search_docs()`
+
+Internal imports:
+- `from app.core.docs_ingest import discover_local_docs`
+- `from app.core.docs_parser import parse_markdown_document`
+
+### `app/core/identity.py` (74 lines)
 
 - `normalize_source_fields()`
 - `compute_source_fingerprint()`
@@ -125,6 +174,18 @@ Internal imports:
 Internal imports:
 - `from app.core.callgraph import parse_solidity_functions`
 
+### `app/core/poller.py` (141 lines)
+
+- **class RepoPoller**: `_load_config`, `start`, `_poll_repo`, `_fetch_head_sha`, `_trigger_reindex`, `stop`
+
+Internal imports:
+- `from app.config import settings`
+- `from app.core.artifacts import load_latest_artifact`
+- `from app.core.identity import compute_artifact_identity`
+- `from app.core.indexer import _github_headers`
+- `from app.models.schemas import IndexRequest`
+- `from app.routes.index import create_index`
+
 ### `app/core/safety.py` (69 lines)
 
 - `path_within_root()`
@@ -139,7 +200,7 @@ Internal imports:
 - `sign_hash()`
 - `verify_signature()`
 
-### `app/core/store.py` (112 lines)
+### `app/core/store.py` (115 lines)
 
 - `build_index_payload()`
 - `search_symbols()`
@@ -148,13 +209,14 @@ Internal imports:
 
 ## app/models/
 
-### `app/models/schemas.py` (159 lines)
+### `app/models/schemas.py` (180 lines)
 
 - **class IndexRequest**: `ensure_identity`
 - **class QueryRequest**: `ensure_query_identity`
 - **class SearchRequest**: `compat`
 - **class GetRequest**: `compat`
 - **class OutlineRequest**: `compat`
+- **class LearningStatePublishRequest**
 - **class CallgraphRequest**
 - **class Manifest**
 - **class ArtifactEnvelope**
@@ -164,7 +226,21 @@ Internal imports:
 
 ## app/routes/
 
-### `app/routes/index.py` (124 lines)
+### `app/routes/hydration.py` (235 lines)
+
+- `_parse_timestamp()`
+- `_freshness_for()`
+- `_worst_freshness()`
+- `_extract_state_payload()`
+- `_filter_work_state()`
+- `hydrate_session()`
+
+Internal imports:
+- `from app.routes.learning import _load_learning_state_candidates, _verify_learning_artifact, publish_learning_state`
+- `from app.models.schemas import LearningStatePublishRequest`
+- `from app.security import require_auth`
+
+### `app/routes/index.py` (136 lines)
 
 - `_diff_counts()`
 - `create_index()`
@@ -174,12 +250,39 @@ Internal imports:
 - `from app.core.signing import canonical_json, sha256_hex, sign_hash`
 - `from app.core.artifacts import persist_artifact, load_artifact, load_latest_artifact`
 - `from app.core.indexer import build_payload_from_repo`
+- `from app.core.docs_store import build_docs_payload_from_repo`
 - `from app.core.identity import REVISION_UNAVAILABLE, source_strategy, compute_artifact_identity`
 - `from app.config import settings`
 - `from app.security import require_auth`
 - `from app.metrics import metrics`
 
-### `app/routes/query.py` (159 lines)
+### `app/routes/learning.py` (337 lines)
+
+- `_now_utc()`
+- `_disabled_response()`
+- `_learning_revision()`
+- `_learning_artifact_id()`
+- `_learning_payload()`
+- `_http_error_for_artifact_error()`
+- `_load_learning_state_candidates()`
+- `_verify_learning_artifact()`
+- `_matching_learning_artifacts()`
+- `_learning_state_summary()`
+- `publish_learning_state()`
+- `read_learning_state()`
+- `list_learning_states()`
+- `read_governance_report()`
+- `list_governance_reports()`
+
+Internal imports:
+- `from app.config import settings`
+- `from app.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact, _sanitize_component`
+- `from app.core.identity import compute_source_fingerprint`
+- `from app.core.signing import canonical_json, sha256_hex, sign_hash`
+- `from app.models.schemas import ArtifactEnvelope, LearningStatePublishRequest, Manifest`
+- `from app.security import require_auth`
+
+### `app/routes/query.py` (191 lines)
 
 - `_execute_query()`
 - `query_index()`
@@ -194,6 +297,7 @@ Internal imports:
 - `from app.models.schemas import CallgraphRequest, GetRequest, OutlineRequest, QueryRequest, SearchRequest`
 - `from app.core.artifacts import load_artifact, verify_artifact`
 - `from app.core.callgraph import build_callgraph_from_file`
+- `from app.core.docs_store import get_docs_entry, get_docs_outline, search_docs`
 - `from app.core.store import get_outline`
 - `from app.core.store import get_symbol`
 - `from app.core.store import search_symbols`
