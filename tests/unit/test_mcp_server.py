@@ -474,6 +474,33 @@ def test_publish_learning_state_omits_empty_metadata():
     assert "metadata" not in body
 
 
+def test_publish_work_state_proxies_to_learning_state_post():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "artifact_id": "learning-1"}
+    with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/learning-state")) as mock:
+        result = mod.publish_work_state(
+            workspace_id="ws1",
+            current_objective="Resume compaction recovery work",
+            agent_id="Claude Code",
+            workspace_root="/home/user/dev/voro",
+            repo="voro-guard",
+            worktree_path="/home/user/dev/voro/voro-guard",
+            open_loops=["Re-run hydration verification"],
+            do_not_redo=["Do not replace fallback continuity"],
+            relevant_refs=["/home/user/.claude/VORO_STARTUP.md"],
+        )
+    body = mock.call_args.kwargs["json"]
+    assert "/v1/learning-state" in mock.call_args.args[0]
+    assert body["workspace_id"] == "ws1"
+    assert body["state_type"] == "work-state"
+    assert body["source_id"].startswith("work-state:claude-code:voro-guard:")
+    assert body["payload"]["schema_version"] == "work-state-v1"
+    assert body["payload"]["agent_id"] == "Claude Code"
+    assert body["payload"]["current_objective"] == "Resume compaction recovery work"
+    assert result == expected
+
+
 def test_read_learning_state_proxies_to_learning_state_get():
     import app.mcp_server as mod
 

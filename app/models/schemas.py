@@ -151,6 +151,33 @@ class LearningStatePublishRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class WorkStateDecision(BaseModel):
+    decision: str = Field(min_length=1)
+    rationale: str = Field(min_length=1)
+
+
+class WorkStatePayload(BaseModel):
+    schema_version: Literal["work-state-v1"]
+    agent_id: str = Field(min_length=1)
+    workspace_root: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+    worktree_path: str = Field(min_length=1)
+    updated_at: str = Field(min_length=1)
+    current_objective: str = Field(min_length=1)
+    active_lane: Optional[str] = None
+    recent_decisions: list[WorkStateDecision] = Field(default_factory=list)
+    open_loops: list[str] = Field(default_factory=list)
+    do_not_redo: list[str] = Field(default_factory=list)
+    relevant_refs: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def normalize_lists(self) -> "WorkStatePayload":
+        self.open_loops = [item.strip() for item in self.open_loops if isinstance(item, str) and item.strip()]
+        self.do_not_redo = [item.strip() for item in self.do_not_redo if isinstance(item, str) and item.strip()]
+        self.relevant_refs = [item.strip() for item in self.relevant_refs if isinstance(item, str) and item.strip()]
+        return self
+
+
 class CallgraphRequest(BaseModel):
     file: str = Field(min_length=1)
     entry_function: str = Field(min_length=1)

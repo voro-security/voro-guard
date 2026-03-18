@@ -171,3 +171,59 @@ def test_publish_learning_state_requires_signing_key_in_strict_mode(tmp_path: Pa
     )
     assert response.status_code == 500
     assert response.json()["detail"]["reason_code"] == "internal_error"
+
+
+def test_publish_valid_work_state_payload_is_accepted(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.post(
+        "/v1/learning-state",
+        json={
+            "workspace_id": "ws1",
+            "source_id": "work-state:claude-code:voro-guard:test123",
+            "state_type": "work-state",
+            "payload": {
+                "schema_version": "work-state-v1",
+                "agent_id": "claude_code",
+                "workspace_root": "/home/user/dev/voro",
+                "repo": "voro-guard",
+                "worktree_path": "/home/user/dev/voro/voro-guard",
+                "updated_at": "2026-03-18T22:55:23Z",
+                "current_objective": "Verify compaction work-state publish path",
+                "open_loops": ["Resume hydration validation."],
+                "do_not_redo": ["Do not replace local fallback."],
+                "relevant_refs": ["/home/user/.claude/VORO_STARTUP.md"],
+            },
+            "metadata": {"published_at": "2026-03-18T22:55:23Z"},
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()["payload"]["payload"]
+    assert payload["schema_version"] == "work-state-v1"
+    assert payload["agent_id"] == "claude_code"
+    assert payload["repo"] == "voro-guard"
+
+
+def test_publish_invalid_work_state_payload_is_rejected(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.post(
+        "/v1/learning-state",
+        json={
+            "workspace_id": "ws1",
+            "source_id": "work-state:claude-code:voro-guard:test123",
+            "state_type": "work-state",
+            "payload": {
+                "schema_version": "work-state-v1",
+                "agent_id": "claude_code",
+                "workspace_root": "/home/user/dev/voro",
+                "repo": "voro-guard",
+                "updated_at": "2026-03-18T22:55:23Z",
+                "current_objective": "Missing required worktree path",
+            },
+            "metadata": {"published_at": "2026-03-18T22:55:23Z"},
+        },
+    )
+    assert response.status_code == 422
