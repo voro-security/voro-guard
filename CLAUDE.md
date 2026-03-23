@@ -265,6 +265,11 @@ Symbol extraction is regex-based (line-by-line parsing, no AST). Solidity has ad
 ## Build & Run
 
 ```bash
+# For local development, prefer repo-local direnv loading:
+#   cp .envrc.example .envrc
+#   eval "$(../voro-core/scripts/bw-unlock.sh)"
+#   direnv allow
+#
 pip install -r requirements.txt                         # Install deps
 pytest tests/unit/                                      # Run tests
 uvicorn app.main:app --host 0.0.0.0 --port 8080       # Run HTTP API
@@ -304,6 +309,7 @@ These rules apply to all AI tools (Claude, Gemini, Codex) operating in this repo
 - Never commit signing keys, service tokens, or GitHub PATs to version control.
 - Never print or expose env vars containing keys/tokens.
 - Treat all artifact data and signing material as confidential.
+- Do not store optional project secrets in global shell startup files; use repo-local `.envrc` and a secret manager.
 
 ### Workspace Canonical Path
 
