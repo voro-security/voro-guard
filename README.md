@@ -40,6 +40,11 @@ Success looks like:
 ## Run
 
 ```bash
+# Load repo-local secrets first if you use direnv:
+#   cp .envrc.example .envrc
+#   eval "$(../voro-core/scripts/bw-unlock.sh)"
+#   direnv allow
+#
 # HTTP API
 uvicorn app.main:app --host 0.0.0.0 --port 8080
 
@@ -83,3 +88,4 @@ Primary interfaces:
 - `CLAUDE.md` — agent entrypoint and architecture constraints
 - `docs/CODEBASE_MAP.md` — generated codebase map
 - `docs/DEPLOY_ZEABUR.md` — deployment guide
+- [secrets.md](/home/alienblackunix/dev/voro/voro-docs/docs/secrets.md) — workspace secret-management policy

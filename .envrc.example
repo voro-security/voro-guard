@@ -1,0 +1,14 @@
+# Local-only secrets for voro-guard.
+#
+# Usage:
+#   cp .envrc.example .envrc
+#   unlock Bitwarden first:
+#     eval "$(../voro-core/scripts/bw-unlock.sh)"
+#   edit the item names if needed
+#   direnv allow
+
+export CODE_INDEX_SERVICE_TOKEN="$(../voro-core/scripts/bw-get-notes-by-name.sh 'voro-guard-service-token')"
+export CODE_INDEX_SIGNING_KEY="$(../voro-core/scripts/bw-get-notes-by-name.sh 'voro-guard-signing-key')"
+
+# Optional: only needed when indexing private GitHub repositories.
+# export CODE_INDEX_GITHUB_TOKEN="$(../voro-core/scripts/bw-get-notes-by-name.sh 'github-voro-index-read-pat')"

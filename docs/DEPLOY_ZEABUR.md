@@ -12,6 +12,10 @@
 - `CODE_INDEX_SIGNER=voro-index-guard-prod`
 - `ARTIFACT_ROOT=/data/artifacts`
 
+For local development, prefer `direnv` plus a secret manager instead of putting these
+values in `~/.bashrc`. See `../.envrc.example` and
+`/home/alienblackunix/dev/voro/voro-docs/docs/secrets.md`.
+
 ## Optional Environment Variables
 - `CODE_INDEX_GITHUB_TOKEN=<github-token>` (for private repos / higher GitHub API limits)
 - `CODE_INDEX_MAX_FILES=400`
