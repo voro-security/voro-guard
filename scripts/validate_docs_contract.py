@@ -41,7 +41,6 @@ CODEBASE_MAP_HEADERS = [
     "# Class:",
     "# Authority:",
     "# Generator:",
-    "# Generated At:",
     "# Source Revision:",
 ]
 

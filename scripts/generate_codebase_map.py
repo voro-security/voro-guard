@@ -16,10 +16,10 @@ OUTPUT = REPO_ROOT / "docs" / "CODEBASE_MAP.md"
 
 
 def source_revision() -> str:
-    """Return the current git revision, or unknown if unavailable."""
+    """Return the latest committed app/ revision, or unknown if unavailable."""
     try:
         return subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
+            ["git", "log", "-1", "--format=%h", "--", "app"],
             cwd=REPO_ROOT,
             text=True,
         ).strip()

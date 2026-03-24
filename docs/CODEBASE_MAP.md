@@ -6,9 +6,9 @@
 # Class: generated-reference
 # Authority: machine-generated
 # Generator: scripts/generate_codebase_map.py
-# Source Revision: e999761
+# Source Revision: eb1d294
 
-**23 files, 3,777 lines**
+**23 files, 3,900 lines**
 
 ## app/
 
@@ -28,7 +28,7 @@ Internal imports:
 - `from app.routes.learning import router`
 - `from app.routes.query import router`
 
-### `app/mcp_server.py` (654 lines)
+### `app/mcp_server.py` (735 lines)
 
 - `_build_auth_headers()`
 - `_start_managed_server()`
@@ -36,6 +36,9 @@ Internal imports:
 - `_request()`
 - `_post()`
 - `_get()`
+- `_now_utc()`
+- `_slugify_component()`
+- `_work_state_source_id()`
 - `_lifespan()`
 - `search_symbols()`
 - `get_symbol()`
@@ -46,6 +49,7 @@ Internal imports:
 - `get_doc_section()`
 - `outline_docs()`
 - `publish_learning_state()`
+- `publish_work_state()`
 - `read_learning_state()`
 - `list_learning_states()`
 - `read_governance_report()`
@@ -208,7 +212,7 @@ Internal imports:
 
 ## app/models/
 
-### `app/models/schemas.py` (180 lines)
+### `app/models/schemas.py` (207 lines)
 
 - **class IndexRequest**: `ensure_identity`
 - **class QueryRequest**: `ensure_query_identity`
@@ -216,6 +220,8 @@ Internal imports:
 - **class GetRequest**: `compat`
 - **class OutlineRequest**: `compat`
 - **class LearningStatePublishRequest**
+- **class WorkStateDecision**
+- **class WorkStatePayload**: `normalize_lists`
 - **class CallgraphRequest**
 - **class Manifest**
 - **class ArtifactEnvelope**
@@ -255,7 +261,7 @@ Internal imports:
 - `from app.security import require_auth`
 - `from app.metrics import metrics`
 
-### `app/routes/learning.py` (337 lines)
+### `app/routes/learning.py` (352 lines)
 
 - `_now_utc()`
 - `_disabled_response()`
@@ -278,7 +284,7 @@ Internal imports:
 - `from app.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact, _sanitize_component`
 - `from app.core.identity import compute_source_fingerprint`
 - `from app.core.signing import canonical_json, sha256_hex, sign_hash`
-- `from app.models.schemas import ArtifactEnvelope, LearningStatePublishRequest, Manifest`
+- `from app.models.schemas import ArtifactEnvelope, LearningStatePublishRequest, Manifest, WorkStatePayload`
 - `from app.security import require_auth`
 
 ### `app/routes/query.py` (191 lines)

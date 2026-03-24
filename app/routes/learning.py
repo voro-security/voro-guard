@@ -7,12 +7,18 @@ from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from app.config import settings
 from app.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact, _sanitize_component
 from app.core.identity import compute_source_fingerprint
 from app.core.signing import canonical_json, sha256_hex, sign_hash
-from app.models.schemas import ArtifactEnvelope, LearningStatePublishRequest, Manifest
+from app.models.schemas import (
+    ArtifactEnvelope,
+    LearningStatePublishRequest,
+    Manifest,
+    WorkStatePayload,
+)
 from app.security import require_auth
 
 
@@ -48,10 +54,13 @@ def _learning_artifact_id(workspace_id: str, source_id: str, state_type: str) ->
 
 
 def _learning_payload(req: LearningStatePublishRequest) -> dict[str, Any]:
+    payload = req.payload
+    if req.state_type == "work-state":
+        payload = WorkStatePayload.model_validate(req.payload).model_dump(exclude_none=True)
     return {
         "state_type": req.state_type,
         "metadata": req.metadata,
-        "payload": req.payload,
+        "payload": payload,
     }
 
 
@@ -168,7 +177,13 @@ def publish_learning_state(req: LearningStatePublishRequest, authorization: str 
     except ValueError as exc:
         raise _http_error_for_artifact_error(str(exc)) from exc
     artifact_version = int(baseline.get("artifact_version", 1) + 1) if baseline else 1
-    payload = _learning_payload(req)
+    try:
+        payload = _learning_payload(req)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"reason_code": "artifact_invalid", "message": str(exc)},
+        ) from exc
 
     unsigned = {
         "schema_version": "learning-v1",

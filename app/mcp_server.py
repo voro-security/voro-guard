@@ -15,6 +15,8 @@ Entry point:
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
+import hashlib
 import logging
 import os
 import signal
@@ -178,6 +180,28 @@ def _get(path: str, params: dict[str, Any]) -> dict[str, Any]:
     return _request("GET", path, params=params)
 
 
+def _now_utc() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _slugify_component(value: str) -> str:
+    lowered = "".join(ch.lower() if ch.isalnum() else "-" for ch in value).strip("-")
+    compact = "-".join(part for part in lowered.split("-") if part)
+    return compact or "unknown"
+
+
+def _work_state_source_id(
+    *,
+    agent_id: str,
+    workspace_root: str,
+    repo: str,
+    worktree_path: str,
+) -> str:
+    identity = f"{workspace_root}:{repo}:{worktree_path}:{agent_id}"
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:12]
+    return f"work-state:{_slugify_component(agent_id)}:{_slugify_component(repo)}:{digest}"
+
+
 # ---------------------------------------------------------------------------
 # MCP server + lifespan
 # ---------------------------------------------------------------------------
@@ -207,7 +231,7 @@ mcp = FastMCP(
         "outline_file to list all symbols in a repository artifact, "
         "and index_repo to trigger indexing of a repository. "
         "For docs artifacts, use index_docs, search_docs, get_doc_section, and outline_docs. "
-        "For adaptive learning backplane state, use publish_learning_state, read_learning_state, and list_learning_states. "
+        "For adaptive learning backplane state, use publish_learning_state, publish_work_state, read_learning_state, and list_learning_states. "
         "For the derived GitHub governance drift report, use read_governance_report and list_governance_reports. "
         "For session resume after compaction, use hydrate_session."
     ),
@@ -504,6 +528,63 @@ def publish_learning_state(
         "workspace_id": workspace_id,
         "source_id": source_id,
         "state_type": state_type,
+        "payload": payload,
+    }
+    if metadata:
+        body["metadata"] = metadata
+    return _post("/v1/learning-state", body)
+
+
+@mcp.tool()
+def publish_work_state(
+    workspace_id: str,
+    current_objective: str,
+    agent_id: str,
+    workspace_root: str,
+    repo: str,
+    worktree_path: str,
+    active_lane: str = "",
+    recent_decisions: list[dict[str, str]] | None = None,
+    open_loops: list[str] | None = None,
+    do_not_redo: list[str] | None = None,
+    relevant_refs: list[str] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Publish a typed work-state.v1 artifact for session resume after compaction.
+
+    This is a thin convenience wrapper over publish_learning_state. It does not
+    introduce a new storage system or mid-session autosave behavior.
+    """
+    payload: dict[str, Any] = {
+        "schema_version": "work-state-v1",
+        "agent_id": agent_id,
+        "workspace_root": workspace_root,
+        "repo": repo,
+        "worktree_path": worktree_path,
+        "updated_at": _now_utc(),
+        "current_objective": current_objective,
+    }
+    if active_lane:
+        payload["active_lane"] = active_lane
+    if recent_decisions:
+        payload["recent_decisions"] = recent_decisions
+    if open_loops:
+        payload["open_loops"] = open_loops
+    if do_not_redo:
+        payload["do_not_redo"] = do_not_redo
+    if relevant_refs:
+        payload["relevant_refs"] = relevant_refs
+    source_id = _work_state_source_id(
+        agent_id=agent_id,
+        workspace_root=workspace_root,
+        repo=repo,
+        worktree_path=worktree_path,
+    )
+    body: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "source_id": source_id,
+        "state_type": "work-state",
         "payload": payload,
     }
     if metadata:
