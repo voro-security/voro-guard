@@ -223,6 +223,8 @@ The payload remains publisher-defined and opaque at the service layer. Guard sto
 - `metadata`
 - `payload`
 
+MCP publishes learning state through `publish_learning_state()` and reads it back through `read_learning_state()` / `list_learning_states()`, which proxy directly to the `/v1/learning-state*` HTTP surfaces.
+
 The feature toggle is `VORO_ADAPTIVE_LEARNING`. When disabled, `/v1/learning-state*` returns `404 {"reason":"adaptive_learning_disabled"}` with zero behavior change to the rest of the service.
 
 ## Supported Languages
