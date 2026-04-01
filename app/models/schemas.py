@@ -178,6 +178,48 @@ class WorkStatePayload(BaseModel):
         return self
 
 
+class SystemStateRef(BaseModel):
+    path: str = Field(min_length=1)
+    role: str = Field(min_length=1)
+
+
+class SystemStatePayload(BaseModel):
+    schema_version: Literal["system-state-v1"]
+    generated_at: str = Field(min_length=1)
+    contract_path: str = Field(min_length=1)
+    current_phase_focus: list[str] = Field(default_factory=list)
+    phase_statuses: list[dict[str, Any]] = Field(default_factory=list)
+    current_blockers: list[str] = Field(default_factory=list)
+    next_recommended_lane: str = Field(min_length=1)
+    follow_on_cleanup_lanes: list[str] = Field(default_factory=list)
+    authoritative_refs: list[SystemStateRef] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def normalize_lists(self) -> "SystemStatePayload":
+        self.current_phase_focus = [item.strip() for item in self.current_phase_focus if isinstance(item, str) and item.strip()]
+        self.current_blockers = [item.strip() for item in self.current_blockers if isinstance(item, str) and item.strip()]
+        self.follow_on_cleanup_lanes = [item.strip() for item in self.follow_on_cleanup_lanes if isinstance(item, str) and item.strip()]
+        return self
+
+
+class RepoStatePayload(BaseModel):
+    schema_version: Literal["repo-state-v1"]
+    repo: str = Field(min_length=1)
+    captured_at: str = Field(min_length=1)
+    branch: str = Field(min_length=1)
+    head_sha: str = Field(min_length=1)
+    dirty: bool
+    open_prs: list[dict[str, Any]] = Field(default_factory=list)
+    important_boundaries: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def normalize_lists(self) -> "RepoStatePayload":
+        self.important_boundaries = [item.strip() for item in self.important_boundaries if isinstance(item, str) and item.strip()]
+        self.notes = [item.strip() for item in self.notes if isinstance(item, str) and item.strip()]
+        return self
+
+
 class CallgraphRequest(BaseModel):
     file: str = Field(min_length=1)
     entry_function: str = Field(min_length=1)

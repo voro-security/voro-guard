@@ -566,6 +566,108 @@ def test_list_governance_reports_proxies_to_governance_reports_get():
     assert result == expected
 
 
+def test_hydrate_session_proxies_full_identity_filters():
+    import app.mcp_server as mod
+
+    expected = {"ok": True, "schema_version": "hydration-response-v1"}
+    with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/hydrate")) as mock:
+        result = mod.hydrate_session(
+            workspace_id="ws1",
+            agent_id="claude_1",
+            repo="voro-guard",
+            worktree_path="/home/user/dev/voro/voro-guard",
+            workspace_root="/home/user/dev/voro",
+        )
+    assert "/v1/hydrate" in mock.call_args.args[0]
+    params = mock.call_args.kwargs["params"]
+    assert params == {
+        "workspace_id": "ws1",
+        "agent_id": "claude_1",
+        "repo": "voro-guard",
+        "worktree_path": "/home/user/dev/voro/voro-guard",
+        "workspace_root": "/home/user/dev/voro",
+    }
+    assert result == expected
+
+
+def test_hydrate_session_end_to_end_uses_workspace_root_filter(tmp_path: Path):
+    import app.mcp_server as mod
+    from app.config import settings
+    from app.models.schemas import LearningStatePublishRequest
+    from app.routes.learning import publish_learning_state
+    from app.main import app
+    from fastapi.testclient import TestClient
+
+    settings.trust_mode = "strict"
+    settings.signing_key = "dev-signing-key"
+    settings.adaptive_learning_enabled = True
+    settings.service_token = ""
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    ws = "mcp-hydrate-ws"
+    common_state = {
+        "schema_version": "work-state-v1",
+        "agent_id": "claude_1",
+        "repo": "voro-guard",
+        "updated_at": "2026-04-01T12:00:00Z",
+        "current_objective": "hydration objective",
+    }
+
+    publish_learning_state(
+        LearningStatePublishRequest(
+            workspace_id=ws,
+            source_id="work-state:claude-1:voro-guard:a",
+            state_type="work-state",
+            payload={
+                **common_state,
+                "workspace_root": "/workspace-a",
+                "worktree_path": "/workspace-a/voro-guard",
+            },
+            metadata={"published_at": "2026-04-01T12:00:00Z"},
+        ),
+        authorization=None,
+    )
+    publish_learning_state(
+        LearningStatePublishRequest(
+            workspace_id=ws,
+            source_id="work-state:claude-1:voro-guard:b",
+            state_type="work-state",
+            payload={
+                **common_state,
+                "workspace_root": "/workspace-b",
+                "worktree_path": "/workspace-b/voro-guard",
+                "current_objective": "workspace b objective",
+            },
+            metadata={"published_at": "2026-04-01T12:00:00Z"},
+        ),
+        authorization=None,
+    )
+
+    client = TestClient(app)
+
+    def _route_get(url: str, *, params=None, headers=None, timeout=None):
+        path = url.removeprefix(mod.INDEX_GUARD_URL)
+        response = client.get(path, params=params, headers=headers)
+        return httpx.Response(
+            status_code=response.status_code,
+            json=response.json(),
+            request=httpx.Request("GET", url),
+        )
+
+    with patch("httpx.get", side_effect=_route_get):
+        result = mod.hydrate_session(
+            workspace_id=ws,
+            agent_id="claude_1",
+            repo="voro-guard",
+            workspace_root="/workspace-b",
+        )
+
+    assert result["ok"] is True
+    assert result["work_state"] is not None
+    assert result["work_state"]["workspace_root"] == "/workspace-b"
+    assert result["work_state"]["current_objective"] == "workspace b objective"
+
+
 # ---------------------------------------------------------------------------
 # Auth header
 # ---------------------------------------------------------------------------

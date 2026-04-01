@@ -690,6 +690,7 @@ def hydrate_session(
     agent_id: str = "",
     repo: str = "",
     worktree_path: str = "",
+    workspace_root: str = "",
 ) -> dict[str, Any]:
     """
     Resume a session after compaction by assembling signed state artifacts.
@@ -702,6 +703,7 @@ def hydrate_session(
         agent_id: Optional agent identifier for work-state matching.
         repo: Optional repo name to filter repo-states and work-state.
         worktree_path: Optional worktree path for work-state identity.
+        workspace_root: Optional workspace root for full work-state identity matching.
 
     Returns:
         Hydration response with freshness_status, assembled states,
@@ -714,6 +716,8 @@ def hydrate_session(
         params["repo"] = repo
     if worktree_path:
         params["worktree_path"] = worktree_path
+    if workspace_root:
+        params["workspace_root"] = workspace_root
     return _get("/v1/hydrate", params)
 
 

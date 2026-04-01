@@ -17,6 +17,8 @@ from app.models.schemas import (
     ArtifactEnvelope,
     LearningStatePublishRequest,
     Manifest,
+    RepoStatePayload,
+    SystemStatePayload,
     WorkStatePayload,
 )
 from app.security import require_auth
@@ -57,6 +59,10 @@ def _learning_payload(req: LearningStatePublishRequest) -> dict[str, Any]:
     payload = req.payload
     if req.state_type == "work-state":
         payload = WorkStatePayload.model_validate(req.payload).model_dump(exclude_none=True)
+    elif req.state_type == "system-state":
+        payload = SystemStatePayload.model_validate(req.payload).model_dump(exclude_none=True)
+    elif req.state_type == "repo-state":
+        payload = RepoStatePayload.model_validate(req.payload).model_dump(exclude_none=True)
     return {
         "state_type": req.state_type,
         "metadata": req.metadata,

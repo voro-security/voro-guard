@@ -227,3 +227,116 @@ def test_publish_invalid_work_state_payload_is_rejected(tmp_path: Path) -> None:
         },
     )
     assert response.status_code == 422
+    assert response.json()["detail"]["reason_code"] == "artifact_invalid"
+
+
+def test_publish_valid_system_state_payload_is_accepted(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.post(
+        "/v1/learning-state",
+        json={
+            "workspace_id": "ws1",
+            "source_id": "fleet",
+            "state_type": "system-state",
+            "payload": {
+                "schema_version": "system-state-v1",
+                "generated_at": "2026-03-18T22:55:23Z",
+                "contract_path": "/home/user/dev/voro/voro-docs/EXECUTION_CONTRACT.md",
+                "current_phase_focus": ["1", "2C"],
+                "phase_statuses": [{"phase": "2C", "status": "active"}],
+                "current_blockers": ["none"],
+                "next_recommended_lane": "Phase 2C hydration slice",
+                "authoritative_refs": [
+                    {"path": "EXECUTION_CONTRACT.md", "role": "governing"},
+                    {"path": "docs/hydration-plane-spec.md", "role": "binding"},
+                ],
+            },
+            "metadata": {"published_at": "2026-03-18T22:55:23Z"},
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()["payload"]["payload"]
+    assert payload["schema_version"] == "system-state-v1"
+    assert payload["next_recommended_lane"] == "Phase 2C hydration slice"
+    assert payload["authoritative_refs"][0]["role"] == "governing"
+
+
+def test_publish_invalid_system_state_payload_is_rejected(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.post(
+        "/v1/learning-state",
+        json={
+            "workspace_id": "ws1",
+            "source_id": "fleet",
+            "state_type": "system-state",
+            "payload": {
+                "schema_version": "system-state-v1",
+                "generated_at": "2026-03-18T22:55:23Z",
+                "current_phase_focus": ["1", "2C"],
+                "phase_statuses": [{"phase": "2C", "status": "active"}],
+                "current_blockers": ["none"],
+                "next_recommended_lane": "Phase 2C hydration slice",
+                "authoritative_refs": [{"path": "EXECUTION_CONTRACT.md"}],
+            },
+            "metadata": {"published_at": "2026-03-18T22:55:23Z"},
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["reason_code"] == "artifact_invalid"
+
+
+def test_publish_valid_repo_state_payload_is_accepted(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.post(
+        "/v1/learning-state",
+        json={
+            "workspace_id": "ws1",
+            "source_id": "voro-guard",
+            "state_type": "repo-state",
+            "payload": {
+                "schema_version": "repo-state-v1",
+                "repo": "voro-guard",
+                "captured_at": "2026-03-18T22:55:23Z",
+                "branch": "feat/hydration",
+                "head_sha": "abc1234",
+                "dirty": False,
+                "important_boundaries": ["app/routes/hydration.py"],
+            },
+            "metadata": {"published_at": "2026-03-18T22:55:23Z"},
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()["payload"]["payload"]
+    assert payload["schema_version"] == "repo-state-v1"
+    assert payload["repo"] == "voro-guard"
+    assert payload["dirty"] is False
+
+
+def test_publish_invalid_repo_state_payload_is_rejected(tmp_path: Path) -> None:
+    settings.adaptive_learning_enabled = True
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    response = client.post(
+        "/v1/learning-state",
+        json={
+            "workspace_id": "ws1",
+            "source_id": "voro-guard",
+            "state_type": "repo-state",
+            "payload": {
+                "schema_version": "repo-state-v1",
+                "repo": "voro-guard",
+                "captured_at": "2026-03-18T22:55:23Z",
+                "branch": "feat/hydration",
+                "dirty": False,
+            },
+            "metadata": {"published_at": "2026-03-18T22:55:23Z"},
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["reason_code"] == "artifact_invalid"
