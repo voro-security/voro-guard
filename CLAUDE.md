@@ -296,7 +296,7 @@ Production via Zeabur (see `docs/DEPLOY_ZEABUR.md`):
 - **Branch:** `main` at `45cdb1d`
 - Phase 2.0 (MCP wrapper) merged
 - Phase 3.0 (Solidity call graphs with visibility) merged (#6)
-- Known issues: voro-index-guard#5 (visibility modifier parsing for reachability)
+- Known issues: voro-guard#5 (visibility modifier parsing for reachability)
 - Integration: voro-brain calls via `src/exploitability/index_guard_client.py` (gated by `VORO_EXPLOITABILITY=1`)
 
 ## Cross-Tool Architectural Constraints
