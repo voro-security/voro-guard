@@ -78,7 +78,7 @@ voro-brain (ExploitabilityAssessor)
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `CODE_INDEX_TRUST_MODE` | `strict` | `strict` (signed verification) or `legacy` (unsigned allowed) |
-| `CODE_INDEX_SIGNER` | `voro-index-guard` | Signing identity |
+| `CODE_INDEX_SIGNER` | `voro-guard` | Signing identity |
 | `CODE_INDEX_SIGNING_KEY` | `` | HMAC secret for artifact signing (required in strict mode) |
 | `CODE_INDEX_SERVICE_TOKEN` | `` | Bearer token for HTTP API auth |
 | `CODE_INDEX_GITHUB_TOKEN` | `` | GitHub PAT for private repos |
@@ -174,7 +174,7 @@ voro-guard/
   "rebuild_reason": "incremental_changed_files",
   "artifact_hash": "sha256 hex",
   "manifest": {
-    "signer": "voro-index-guard",
+    "signer": "voro-guard",
     "signed_at": "ISO8601",
     "signature": "hmac_hex",
     "key_id": null
@@ -296,7 +296,7 @@ Production via Zeabur (see `docs/DEPLOY_ZEABUR.md`):
 - **Branch:** `main` at `45cdb1d`
 - Phase 2.0 (MCP wrapper) merged
 - Phase 3.0 (Solidity call graphs with visibility) merged (#6)
-- Known issues: voro-index-guard#5 (visibility modifier parsing for reachability)
+- Known issues: voro-guard#5 (visibility modifier parsing for reachability)
 - Integration: voro-brain calls via `src/exploitability/index_guard_client.py` (gated by `VORO_EXPLOITABILITY=1`)
 
 ## Cross-Tool Architectural Constraints
