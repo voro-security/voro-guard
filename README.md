@@ -1,91 +1,146 @@
-# VORO Guard
+# voro-guard
 
-Standalone hardened code-index service with artifact trust verification and token-savings estimates.
+This repository is the home of `voro-mcp`, an MCP server for code
+intelligence, Solidity call graphs, and signed artifact/state retrieval.
 
-## What This Repo Is
+If you found this repo through the MCP ecosystem, the main thing to know is:
+`voro-mcp` gives clients authenticated access to indexed code, symbol lookup,
+repository outlines, Solidity call graphs, and signed state artifacts through
+one MCP surface.
 
-`voro-guard` is the fleet code-index and artifact-trust service.
+`voro-mcp` does **not** provide:
 
-It indexes repositories, extracts symbols across supported languages, builds Solidity call graphs, and exposes that data through an HTTP API and MCP stdio wrapper.
+- full VORO scan execution
+- product-grade findings
+- `scan_repo`
+- `voro-shield` capability
+- Bayesian scoring
 
-This repo is primarily for:
+## What `voro-mcp` Exposes Today
 
-- engineers maintaining symbol extraction, signing, and artifact trust
-- `voro-brain` integration work for exploitability and reachability analysis
-- operators deploying the service in local or hosted environments
+Current `voro-mcp` capabilities:
 
-## Quick Start
+- repository indexing
+  Plain English: register a repo or docs corpus so it can be queried later.
+- symbol search and retrieval
+  Plain English: find functions, classes, and other symbols by name, then fetch
+  their details.
+- repository outline
+  Plain English: list files and extracted symbols for an indexed artifact.
+- Solidity call graphs
+  Plain English: inspect contract call relationships from indexed Solidity code.
+- signed artifact and state retrieval
+  Plain English: read signed learning-state, governance-report, and hydration
+  artifacts that were already produced elsewhere.
+
+The main MCP tools currently exposed by `app.mcp_server` are:
+
+- `index_repo`
+- `search_symbols`
+- `get_symbol`
+- `outline_file`
+- `index_docs`
+- `search_docs`
+- `get_doc_section`
+- `outline_docs`
+- `publish_learning_state`
+- `publish_work_state`
+- `read_learning_state`
+- `list_learning_states`
+- `read_governance_report`
+- `list_governance_reports`
+- `hydrate_session`
+
+## Install
+
+Install locally from this repo:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install .
+```
+
+Install from PyPI after first public release:
+
+```bash
+pip install voro-mcp
+```
+
+## Run
+
+Start the MCP stdio server:
+
+```bash
+voro-mcp
+```
+
+Equivalent module entry:
+
+```bash
+python -m app.mcp_server
+```
+
+## Runtime Model
+
+`voro-mcp` is a stdio MCP wrapper over the authenticated `voro-guard` HTTP
+service.
+
+- default managed local mode starts the FastAPI service locally
+- external mode reuses an already-running `voro-guard` service
+- bearer auth is enforced by the underlying HTTP service
+
+Relevant environment variables:
+
+- `CODE_INDEX_SERVICE_TOKEN`
+- `INDEX_GUARD_TOKEN`
+- `INDEX_GUARD_URL`
+- `CODE_INDEX_SIGNING_KEY`
+
+## Local Development
 
 Prerequisites:
 
 - Python 3.12
 - `pip`
-- `pre-commit` (for local hook enforcement)
+
+Basic local setup:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-pip install pre-commit
-pre-commit install --hook-type pre-commit --hook-type pre-push
 pytest tests/unit/
 ```
 
-Success looks like:
-
-- unit tests pass
-- `/health` responds locally
-- MCP server starts without crashing
-
-## Run
+Run the HTTP service directly:
 
 ```bash
-# Load repo-local secrets first if you use direnv:
-#   cp .envrc.example .envrc
-#   eval "$(../voro-core/scripts/bw-unlock.sh)"
-#   direnv allow
-#
-# HTTP API
 uvicorn app.main:app --host 0.0.0.0 --port 8080
-
-# MCP stdio server
-python -m app.mcp_server
-
-# Production smoke test
-./scripts/smoke_prod.sh https://<service-domain> <CODE_INDEX_SERVICE_TOKEN>
 ```
 
-## Test
+Quick local checks:
 
 ```bash
 pytest tests/unit/
 curl -sS http://127.0.0.1:8080/health
 ```
 
-Use the health check as a quick runtime validation after API or config changes.
-
-## Fleet Role
-
-- `voro-guard` serves code intelligence and signed artifacts
-- `voro-brain` is the primary consumer via MCP stdio
-- `voro-web` depends on `voro-brain` output rather than talking to `voro-guard` directly
-
-Primary interfaces:
-
-- HTTP API on `/health`, `/v1/index`, `/v1/search`, `/v1/get`, `/v1/outline`, `/v1/callgraph`, `/v1/metrics`
-- MCP stdio wrapper via `python -m app.mcp_server`
-
-## Key Paths
+## Repository Layout
 
 - `app/main.py` — FastAPI app setup
-- `app/mcp_server.py` — MCP stdio wrapper and managed subprocess logic
+- `app/mcp_server.py` — MCP stdio server and managed local runtime
 - `app/routes/` — HTTP route handlers
-- `app/core/` — indexing, parsing, signing, artifacts, call graphs
-- `docs/CODEBASE_MAP.md` — generated structural map
+- `app/core/` — indexing, parsing, signing, artifact, and call graph logic
+- `docs/CODEBASE_MAP.md` — repo structure reference
 
-## Documentation
+## Project Context
 
-- `CLAUDE.md` — agent entrypoint and architecture constraints
-- `docs/CODEBASE_MAP.md` — generated codebase map
-- `docs/DEPLOY_ZEABUR.md` — deployment guide
-- [secrets.md](/home/alienblackunix/dev/voro/voro-docs/docs/secrets.md) — workspace secret-management policy
+- The public package name is `voro-mcp`.
+- The current launch-facing MCP server identity is
+  `io.github.voro-security/voro-mcp`.
+- `voro-guard` is the underlying service and runtime that powers the public
+  `voro-mcp` package.
+- Some public-facing metadata in this repo is prepared for a future
+  `voro-security/voro-guard` GitHub owner path; do not treat that as proof of a
+  completed repo transfer until it actually happens.
