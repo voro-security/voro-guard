@@ -49,6 +49,24 @@ Equivalent direct module entry:
 python -m app.mcp_server
 ```
 
+## First Run With An MCP Client
+
+`voro-mcp` is intended to be launched by an MCP client over stdio. A minimal
+client entry looks like this:
+
+```json
+{
+  "mcpServers": {
+    "voro-mcp": {
+      "command": "voro-mcp"
+    }
+  }
+}
+```
+
+The default run path starts the bounded local `voro-guard` runtime for you
+unless `INDEX_GUARD_URL` is set.
+
 ## Runtime boundary
 
 `voro-mcp` is a stdio MCP wrapper over the authenticated `voro-guard` HTTP
@@ -60,12 +78,13 @@ service.
 
 Relevant environment variables:
 
-- `CODE_INDEX_SERVICE_TOKEN`
-- `INDEX_GUARD_TOKEN`
-- `INDEX_GUARD_URL`
-- `CODE_INDEX_SIGNING_KEY`
+- `CODE_INDEX_SERVICE_TOKEN` — usually required when auth is enabled
+- `INDEX_GUARD_URL` — optional; reuse an already-running `voro-guard` service
+- `INDEX_GUARD_TOKEN` — optional override for the upstream bearer token
+- `CODE_INDEX_SIGNING_KEY` — needed only for strict signed-artifact and
+  signed-state flows
 
-## Truthful capability summary
+## Capability summary
 
 `voro-mcp` gives AI agents and security workflows authenticated access to:
 
@@ -75,5 +94,6 @@ Relevant environment variables:
 - trust-signed artifact retrieval
 - hydration-backed signed state assembly
 
-It remains the `voro-guard` transport, verification, and retrieval plane. It
-is not the semantic authority for the underlying repos or documents it serves.
+`voro-mcp` is the installable MCP surface for the existing `voro-guard`
+service. It exposes the bounded capabilities above and reads from the indexed
+repositories, docs artifacts, and signed state already produced elsewhere.

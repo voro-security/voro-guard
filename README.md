@@ -10,9 +10,8 @@ one MCP surface.
 
 `voro-mcp` does **not** provide:
 
-- full VORO scan execution
+- full repository vulnerability scanning
 - product-grade findings
-- `scan_repo`
 - `voro-shield` capability
 - Bayesian scoring
 
@@ -81,6 +80,24 @@ Equivalent module entry:
 python -m app.mcp_server
 ```
 
+## First Run With An MCP Client
+
+`voro-mcp` is meant to be started by an MCP client over stdio. A minimal
+client entry looks like this:
+
+```json
+{
+  "mcpServers": {
+    "voro-mcp": {
+      "command": "voro-mcp"
+    }
+  }
+}
+```
+
+On first run, the server starts the bounded `voro-guard` runtime locally
+unless you point it at an existing service with `INDEX_GUARD_URL`.
+
 ## Runtime Model
 
 `voro-mcp` is a stdio MCP wrapper over the authenticated `voro-guard` HTTP
@@ -92,10 +109,12 @@ service.
 
 Relevant environment variables:
 
-- `CODE_INDEX_SERVICE_TOKEN`
-- `INDEX_GUARD_TOKEN`
-- `INDEX_GUARD_URL`
-- `CODE_INDEX_SIGNING_KEY`
+- `CODE_INDEX_SERVICE_TOKEN` — usually required when auth is enabled
+- `INDEX_GUARD_URL` — optional; points `voro-mcp` at an already-running
+  `voro-guard` service instead of managed local mode
+- `INDEX_GUARD_TOKEN` — optional override for the upstream bearer token
+- `CODE_INDEX_SIGNING_KEY` — required only for strict signed-artifact and
+  signed-state flows
 
 ## Local Development
 
@@ -141,6 +160,3 @@ curl -sS http://127.0.0.1:8080/health
   `io.github.voro-security/voro-mcp`.
 - `voro-guard` is the underlying service and runtime that powers the public
   `voro-mcp` package.
-- Some public-facing metadata in this repo is prepared for a future
-  `voro-security/voro-guard` GitHub owner path; do not treat that as proof of a
-  completed repo transfer until it actually happens.
