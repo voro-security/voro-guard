@@ -1,5 +1,7 @@
 # voro-guard
 
+## What This Repo Is
+
 This repository is the home of `voro-mcp`, an MCP server for code
 intelligence, Solidity call graphs, and signed artifact/state retrieval.
 
@@ -49,6 +51,17 @@ The main MCP tools currently exposed by `app.mcp_server` are:
 - `read_governance_report`
 - `list_governance_reports`
 - `hydrate_session`
+
+## Quick Start
+
+Install locally from this repo:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install .
+voro-mcp
+```
 
 ## Install
 
@@ -145,13 +158,38 @@ pytest tests/unit/
 curl -sS http://127.0.0.1:8080/health
 ```
 
-## Repository Layout
+## Test
+
+Use these quick checks after a local setup or runtime change:
+
+```bash
+pytest tests/unit/
+curl -sS http://127.0.0.1:8080/health
+```
+
+## Fleet Role
+
+- `voro-guard` is the underlying service and runtime that powers the public
+  `voro-mcp` package.
+- Internal systems such as `voro-brain` may consume this surface, but public
+  users do not need access to private repositories to install or run
+  `voro-mcp`.
+
+## Key Paths
 
 - `app/main.py` — FastAPI app setup
 - `app/mcp_server.py` — MCP stdio server and managed local runtime
 - `app/routes/` — HTTP route handlers
 - `app/core/` — indexing, parsing, signing, artifact, and call graph logic
 - `docs/CODEBASE_MAP.md` — repo structure reference
+
+## Documentation
+
+- `README.voro-mcp.md` — package-facing README for the public `voro-mcp`
+  install surface
+- `docs/CODEBASE_MAP.md` — generated structural reference for the repo
+- `docs/DEPLOY_ZEABUR.md` — Zeabur deployment reference for the underlying
+  service runtime
 
 ## Project Context
 
