@@ -10,6 +10,7 @@
 - **Language:** Python 3.12, FastAPI, Pydantic, FastMCP
 - **Tests:** 8 unit test modules (`pytest tests/unit/`)
 - **Entry points:** `uvicorn app.main:app` (HTTP API) / `python -m app.mcp_server` (MCP stdio)
+- **Public package/listing identity:** `voro-mcp` / `io.github.voro-security/voro-mcp`
 - **Version:** 0.1.0
 
 ## Architecture Contract
@@ -57,6 +58,9 @@ voro-brain (ExploitabilityAssessor)
 | GET | `/v1/metrics` | Service metrics snapshot | Bearer |
 
 ## MCP Tools (exposed via stdio)
+
+The repo/runtime remains `voro-guard`, but the public-facing MCP server identity
+exposed from `app.mcp_server` is `io.github.voro-security/voro-mcp`.
 
 | Tool | Maps To | Purpose |
 |------|---------|---------|
