@@ -11,7 +11,7 @@ from collections import defaultdict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SRC_DIR = REPO_ROOT / "app"
+SRC_DIR = REPO_ROOT / "voro_mcp"
 OUTPUT = REPO_ROOT / "docs" / "CODEBASE_MAP.md"
 
 
@@ -19,7 +19,7 @@ def source_revision() -> str:
     """Return the latest committed voro_mcp/ revision, or unknown if unavailable."""
     try:
         return subprocess.check_output(
-            ["git", "log", "-1", "--format=%h", "--", "app"],
+            ["git", "log", "-1", "--format=%h", "--", "voro_mcp"],
             cwd=REPO_ROOT,
             text=True,
         ).strip()
@@ -55,7 +55,7 @@ def parse_file(filepath: Path) -> dict:
             functions.append(node.name)
 
         elif isinstance(node, ast.ImportFrom):
-            if node.module and node.module.startswith("app"):
+            if node.module and node.module.startswith("voro_mcp"):
                 names = [alias.name for alias in node.names]
                 imports.append(f"from {node.module} import {', '.join(names)}")
 
@@ -79,7 +79,7 @@ def group_by_package(entries: list[dict]) -> dict[str, list[dict]]:
     for entry in entries:
         parts = Path(entry["path"]).parts
         # Package is everything up to but not including the filename
-        pkg = "/".join(parts[:-1]) if len(parts) > 1 else "app"
+        pkg = "/".join(parts[:-1]) if len(parts) > 1 else "voro_mcp"
         groups[pkg].append(entry)
     return dict(sorted(groups.items()))
 

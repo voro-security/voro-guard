@@ -6,9 +6,9 @@
 # Class: generated-reference
 # Authority: machine-generated
 # Generator: scripts/generate_codebase_map.py
-# Source Revision: c714959
+# Source Revision: 67e4a8a
 
-**23 files, 3,900 lines**
+**23 files, 3,915 lines**
 
 ## voro_mcp/
 
@@ -28,9 +28,10 @@ Internal imports:
 - `from voro_mcp.routes.learning import router`
 - `from voro_mcp.routes.query import router`
 
-### `voro_mcp/mcp_server.py` (735 lines)
+### `voro_mcp/mcp_server.py` (750 lines)
 
 - `_build_auth_headers()`
+- `_default_managed_artifact_root()`
 - `_start_managed_server()`
 - `_stop_managed_server()`
 - `_request()`
