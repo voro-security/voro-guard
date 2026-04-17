@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voro-mcp"
+version = "0.1.0"
+description = "MCP stdio wrapper for voro-guard code intelligence and trust-signed artifact retrieval."
+readme = "README.voro-mcp.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "VORO" }]
+dependencies = [
+  "fastapi==0.135.1",
+  "uvicorn==0.41.0",
+  "pydantic==2.12.5",
+  "python-multipart==0.0.22",
+  "httpx==0.28.1",
+  "fastmcp==3.1.0",
+  "PyYAML==6.0.2",
+]
+keywords = [
+  "mcp",
+  "model-context-protocol",
+  "code-intelligence",
+  "solidity",
+  "artifact-verification",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "License :: Other/Proprietary License",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/voro-security/voro-guard"
+Repository = "https://github.com/voro-security/voro-guard"
+Documentation = "https://github.com/voro-security/voro-guard/blob/main/README.voro-mcp.md"
+
+[project.scripts]
+voro-mcp = "app.mcp_server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+namespaces = true

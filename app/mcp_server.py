@@ -223,9 +223,9 @@ async def _lifespan(server: FastMCP):
 
 
 mcp = FastMCP(
-    name="voro-guard",
+    name="io.github.voro-security/voro-mcp",
     instructions=(
-        "Code symbol index for voro-guard. "
+        "Code intelligence and signed artifact retrieval for voro-guard. "
         "Use search_symbols to find functions/classes by name, "
         "get_symbol to retrieve full details for a specific symbol ID, "
         "outline_file to list all symbols in a repository artifact, "

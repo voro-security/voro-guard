@@ -1,0 +1,48 @@
+{
+  "name": "io.github.voro-security/voro-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for code intelligence and trust-signed artifact retrieval from voro-guard, including indexed code, Solidity call graphs, and signed state access for authenticated workflows.",
+  "repository": "https://github.com/voro-security/voro-guard",
+  "homepage": "https://github.com/voro-security/voro-guard",
+  "transport": {
+    "type": "stdio",
+    "entrypoint": "voro-mcp",
+    "module": "app.mcp_server"
+  },
+  "package": {
+    "ecosystem": "python",
+    "name": "voro-mcp",
+    "python": ">=3.12"
+  },
+  "install": {
+    "local_review": "pip install .",
+    "published_surface": "pip install voro-mcp"
+  },
+  "review_status": {
+    "submission": "not submitted",
+    "public_well_known_status": "post-deploy target only"
+  },
+  "authentication": {
+    "mode": "authenticated HTTP service behind MCP stdio wrapper",
+    "env": [
+      "CODE_INDEX_SERVICE_TOKEN",
+      "INDEX_GUARD_TOKEN",
+      "INDEX_GUARD_URL",
+      "CODE_INDEX_SIGNING_KEY"
+    ]
+  },
+  "capabilities": [
+    "repository indexing",
+    "symbol search/get/outline",
+    "Solidity call graph generation",
+    "signed learning-state retrieval",
+    "signed governance-report retrieval",
+    "session hydration and signed state assembly"
+  ],
+  "out_of_scope_claims": [
+    "voro-shield",
+    "full VORO scan execution",
+    "product-grade findings",
+    "Bayesian scoring"
+  ]
+}
