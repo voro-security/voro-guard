@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.metrics import metrics
-from app.models.schemas import CallgraphRequest, GetRequest, OutlineRequest, QueryRequest, SearchRequest
-from app.core.artifacts import load_artifact, verify_artifact
-from app.core.callgraph import build_callgraph_from_file
-from app.core.docs_store import get_docs_entry, get_docs_outline, search_docs
-from app.core.store import get_outline as build_outline
-from app.core.store import get_symbol as find_symbol
-from app.core.store import search_symbols as run_search
-from app.security import require_auth
+from voro_mcp.metrics import metrics
+from voro_mcp.models.schemas import CallgraphRequest, GetRequest, OutlineRequest, QueryRequest, SearchRequest
+from voro_mcp.core.artifacts import load_artifact, verify_artifact
+from voro_mcp.core.callgraph import build_callgraph_from_file
+from voro_mcp.core.docs_store import get_docs_entry, get_docs_outline, search_docs
+from voro_mcp.core.store import get_outline as build_outline
+from voro_mcp.core.store import get_symbol as find_symbol
+from voro_mcp.core.store import search_symbols as run_search
+from voro_mcp.security import require_auth
 
 router = APIRouter(dependencies=[Depends(require_auth)])
 

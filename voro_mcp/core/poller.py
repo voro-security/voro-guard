@@ -16,12 +16,12 @@ from typing import Any
 
 import httpx
 
-from app.config import settings
-from app.core.artifacts import load_latest_artifact
-from app.core.identity import compute_artifact_identity
-from app.core.indexer import _github_headers
-from app.models.schemas import IndexRequest
-from app.routes.index import create_index
+from voro_mcp.config import settings
+from voro_mcp.core.artifacts import load_latest_artifact
+from voro_mcp.core.identity import compute_artifact_identity
+from voro_mcp.core.indexer import _github_headers
+from voro_mcp.models.schemas import IndexRequest
+from voro_mcp.routes.index import create_index
 
 logger = logging.getLogger("voro-guard.poller")
 

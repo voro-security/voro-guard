@@ -9,17 +9,17 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from app.config import settings
-from app.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact, _sanitize_component
-from app.core.identity import compute_source_fingerprint
-from app.core.signing import canonical_json, sha256_hex, sign_hash
-from app.models.schemas import (
+from voro_mcp.config import settings
+from voro_mcp.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact, _sanitize_component
+from voro_mcp.core.identity import compute_source_fingerprint
+from voro_mcp.core.signing import canonical_json, sha256_hex, sign_hash
+from voro_mcp.models.schemas import (
     ArtifactEnvelope,
     LearningStatePublishRequest,
     Manifest,
     WorkStatePayload,
 )
-from app.security import require_auth
+from voro_mcp.security import require_auth
 
 
 router = APIRouter()

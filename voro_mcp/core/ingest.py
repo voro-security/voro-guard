@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.core.parser import LANGUAGE_EXTENSIONS
-from app.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root
+from voro_mcp.core.parser import LANGUAGE_EXTENSIONS
+from voro_mcp.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root
 
 SKIP_DIRS = {
     ".git",

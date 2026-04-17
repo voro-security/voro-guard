@@ -6,31 +6,32 @@
 # Class: generated-reference
 # Authority: machine-generated
 # Generator: scripts/generate_codebase_map.py
-# Source Revision: a153fc8
+# Source Revision: 67e4a8a
 
-**23 files, 3,900 lines**
+**23 files, 3,915 lines**
 
-## app/
+## voro_mcp/
 
-### `app/config.py` (21 lines)
+### `voro_mcp/config.py` (21 lines)
 
 - **class Settings**
 
-### `app/main.py` (36 lines)
+### `voro_mcp/main.py` (36 lines)
 
 - `lifespan()`
 - `health()`
 
 Internal imports:
-- `from app.config import settings`
-- `from app.routes.hydration import router`
-- `from app.routes.index import router`
-- `from app.routes.learning import router`
-- `from app.routes.query import router`
+- `from voro_mcp.config import settings`
+- `from voro_mcp.routes.hydration import router`
+- `from voro_mcp.routes.index import router`
+- `from voro_mcp.routes.learning import router`
+- `from voro_mcp.routes.query import router`
 
-### `app/mcp_server.py` (735 lines)
+### `voro_mcp/mcp_server.py` (750 lines)
 
 - `_build_auth_headers()`
+- `_default_managed_artifact_root()`
 - `_start_managed_server()`
 - `_stop_managed_server()`
 - `_request()`
@@ -57,20 +58,20 @@ Internal imports:
 - `hydrate_session()`
 - `main()`
 
-### `app/metrics.py` (73 lines)
+### `voro_mcp/metrics.py` (73 lines)
 
 - **class MetricsStore**: `record_request`, `record_success`, `record_deny`, `record_rebuild`, `snapshot`
 
-### `app/security.py` (18 lines)
+### `voro_mcp/security.py` (18 lines)
 
 - `require_auth()`
 
 Internal imports:
-- `from app.config import settings`
+- `from voro_mcp.config import settings`
 
-## app/core/
+## voro_mcp/core/
 
-### `app/core/artifacts.py` (129 lines)
+### `voro_mcp/core/artifacts.py` (129 lines)
 
 - `_sanitize_component()`
 - `_artifact_root()`
@@ -83,10 +84,10 @@ Internal imports:
 - `verify_artifact()`
 
 Internal imports:
-- `from app.config import settings`
-- `from app.core.signing import canonical_json, sha256_hex, verify_signature`
+- `from voro_mcp.config import settings`
+- `from voro_mcp.core.signing import canonical_json, sha256_hex, verify_signature`
 
-### `app/core/callgraph.py` (228 lines)
+### `voro_mcp/core/callgraph.py` (228 lines)
 
 - **class FunctionCall**
 - **class SolidityFunction**
@@ -99,15 +100,15 @@ Internal imports:
 - `build_callgraph()`
 - `build_callgraph_from_file()`
 
-### `app/core/docs_ingest.py` (69 lines)
+### `voro_mcp/core/docs_ingest.py` (69 lines)
 
 - `_matches_any()`
 - `discover_local_docs()`
 
 Internal imports:
-- `from app.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root`
+- `from voro_mcp.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root`
 
-### `app/core/docs_parser.py` (249 lines)
+### `voro_mcp/core/docs_parser.py` (249 lines)
 
 - `_strip_quotes()`
 - `_parse_frontmatter()`
@@ -118,7 +119,7 @@ Internal imports:
 - `_keywords()`
 - `parse_markdown_document()`
 
-### `app/core/docs_store.py` (311 lines)
+### `voro_mcp/core/docs_store.py` (311 lines)
 
 - `build_docs_payload()`
 - `build_docs_payload_from_repo()`
@@ -128,10 +129,10 @@ Internal imports:
 - `search_docs()`
 
 Internal imports:
-- `from app.core.docs_ingest import discover_local_docs`
-- `from app.core.docs_parser import parse_markdown_document`
+- `from voro_mcp.core.docs_ingest import discover_local_docs`
+- `from voro_mcp.core.docs_parser import parse_markdown_document`
 
-### `app/core/identity.py` (74 lines)
+### `voro_mcp/core/identity.py` (74 lines)
 
 - `normalize_source_fields()`
 - `compute_source_fingerprint()`
@@ -139,9 +140,9 @@ Internal imports:
 - `source_strategy()`
 
 Internal imports:
-- `from app.core.signing import sha256_hex`
+- `from voro_mcp.core.signing import sha256_hex`
 
-### `app/core/indexer.py` (262 lines)
+### `voro_mcp/core/indexer.py` (262 lines)
 
 - `_is_github_ref()`
 - `_parse_github_owner_repo()`
@@ -154,65 +155,65 @@ Internal imports:
 - `build_payload_from_repo()`
 
 Internal imports:
-- `from app.config import settings`
-- `from app.core.ingest import discover_local_files, read_text_file`
-- `from app.core.parser import extract_symbols, language_for_path`
-- `from app.core.store import build_index_payload`
+- `from voro_mcp.config import settings`
+- `from voro_mcp.core.ingest import discover_local_files, read_text_file`
+- `from voro_mcp.core.parser import extract_symbols, language_for_path`
+- `from voro_mcp.core.store import build_index_payload`
 
-### `app/core/ingest.py` (60 lines)
+### `voro_mcp/core/ingest.py` (60 lines)
 
 - `discover_local_files()`
 - `read_text_file()`
 
 Internal imports:
-- `from app.core.parser import LANGUAGE_EXTENSIONS`
-- `from app.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root`
+- `from voro_mcp.core.parser import LANGUAGE_EXTENSIONS`
+- `from voro_mcp.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root`
 
-### `app/core/parser.py` (168 lines)
+### `voro_mcp/core/parser.py` (168 lines)
 
 - `language_for_path()`
 - `extract_symbols()`
 - `_extract_solidity_symbols()`
 
 Internal imports:
-- `from app.core.callgraph import parse_solidity_functions`
+- `from voro_mcp.core.callgraph import parse_solidity_functions`
 
-### `app/core/poller.py` (141 lines)
+### `voro_mcp/core/poller.py` (141 lines)
 
 - **class RepoPoller**: `_load_config`, `start`, `_poll_repo`, `_fetch_head_sha`, `_trigger_reindex`, `stop`
 
 Internal imports:
-- `from app.config import settings`
-- `from app.core.artifacts import load_latest_artifact`
-- `from app.core.identity import compute_artifact_identity`
-- `from app.core.indexer import _github_headers`
-- `from app.models.schemas import IndexRequest`
-- `from app.routes.index import create_index`
+- `from voro_mcp.config import settings`
+- `from voro_mcp.core.artifacts import load_latest_artifact`
+- `from voro_mcp.core.identity import compute_artifact_identity`
+- `from voro_mcp.core.indexer import _github_headers`
+- `from voro_mcp.models.schemas import IndexRequest`
+- `from voro_mcp.routes.index import create_index`
 
-### `app/core/safety.py` (69 lines)
+### `voro_mcp/core/safety.py` (69 lines)
 
 - `path_within_root()`
 - `is_symlink_escape()`
 - `is_secret_file()`
 - `is_binary_extension()`
 
-### `app/core/signing.py` (21 lines)
+### `voro_mcp/core/signing.py` (21 lines)
 
 - `canonical_json()`
 - `sha256_hex()`
 - `sign_hash()`
 - `verify_signature()`
 
-### `app/core/store.py` (115 lines)
+### `voro_mcp/core/store.py` (115 lines)
 
 - `build_index_payload()`
 - `search_symbols()`
 - `get_symbol()`
 - `get_outline()`
 
-## app/models/
+## voro_mcp/models/
 
-### `app/models/schemas.py` (207 lines)
+### `voro_mcp/models/schemas.py` (207 lines)
 
 - **class IndexRequest**: `ensure_identity`
 - **class QueryRequest**: `ensure_query_identity`
@@ -227,11 +228,11 @@ Internal imports:
 - **class ArtifactEnvelope**
 
 Internal imports:
-- `from app.core.identity import compute_source_fingerprint, normalize_source_fields, REPO_REF_SENTINEL, REVISION_UNAVAILABLE`
+- `from voro_mcp.core.identity import compute_source_fingerprint, normalize_source_fields, REPO_REF_SENTINEL, REVISION_UNAVAILABLE`
 
-## app/routes/
+## voro_mcp/routes/
 
-### `app/routes/hydration.py` (235 lines)
+### `voro_mcp/routes/hydration.py` (235 lines)
 
 - `_parse_timestamp()`
 - `_freshness_for()`
@@ -241,27 +242,27 @@ Internal imports:
 - `hydrate_session()`
 
 Internal imports:
-- `from app.routes.learning import _load_learning_state_candidates, _verify_learning_artifact, publish_learning_state`
-- `from app.models.schemas import LearningStatePublishRequest`
-- `from app.security import require_auth`
+- `from voro_mcp.routes.learning import _load_learning_state_candidates, _verify_learning_artifact, publish_learning_state`
+- `from voro_mcp.models.schemas import LearningStatePublishRequest`
+- `from voro_mcp.security import require_auth`
 
-### `app/routes/index.py` (136 lines)
+### `voro_mcp/routes/index.py` (136 lines)
 
 - `_diff_counts()`
 - `create_index()`
 
 Internal imports:
-- `from app.models.schemas import IndexRequest, ArtifactEnvelope, Manifest`
-- `from app.core.signing import canonical_json, sha256_hex, sign_hash`
-- `from app.core.artifacts import persist_artifact, load_artifact, load_latest_artifact`
-- `from app.core.indexer import build_payload_from_repo`
-- `from app.core.docs_store import build_docs_payload_from_repo`
-- `from app.core.identity import REVISION_UNAVAILABLE, source_strategy, compute_artifact_identity`
-- `from app.config import settings`
-- `from app.security import require_auth`
-- `from app.metrics import metrics`
+- `from voro_mcp.models.schemas import IndexRequest, ArtifactEnvelope, Manifest`
+- `from voro_mcp.core.signing import canonical_json, sha256_hex, sign_hash`
+- `from voro_mcp.core.artifacts import persist_artifact, load_artifact, load_latest_artifact`
+- `from voro_mcp.core.indexer import build_payload_from_repo`
+- `from voro_mcp.core.docs_store import build_docs_payload_from_repo`
+- `from voro_mcp.core.identity import REVISION_UNAVAILABLE, source_strategy, compute_artifact_identity`
+- `from voro_mcp.config import settings`
+- `from voro_mcp.security import require_auth`
+- `from voro_mcp.metrics import metrics`
 
-### `app/routes/learning.py` (352 lines)
+### `voro_mcp/routes/learning.py` (352 lines)
 
 - `_now_utc()`
 - `_disabled_response()`
@@ -280,14 +281,14 @@ Internal imports:
 - `list_governance_reports()`
 
 Internal imports:
-- `from app.config import settings`
-- `from app.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact, _sanitize_component`
-- `from app.core.identity import compute_source_fingerprint`
-- `from app.core.signing import canonical_json, sha256_hex, sign_hash`
-- `from app.models.schemas import ArtifactEnvelope, LearningStatePublishRequest, Manifest, WorkStatePayload`
-- `from app.security import require_auth`
+- `from voro_mcp.config import settings`
+- `from voro_mcp.core.artifacts import load_latest_artifact, persist_artifact, verify_artifact, _sanitize_component`
+- `from voro_mcp.core.identity import compute_source_fingerprint`
+- `from voro_mcp.core.signing import canonical_json, sha256_hex, sign_hash`
+- `from voro_mcp.models.schemas import ArtifactEnvelope, LearningStatePublishRequest, Manifest, WorkStatePayload`
+- `from voro_mcp.security import require_auth`
 
-### `app/routes/query.py` (191 lines)
+### `voro_mcp/routes/query.py` (191 lines)
 
 - `_execute_query()`
 - `query_index()`
@@ -298,12 +299,12 @@ Internal imports:
 - `get_callgraph()`
 
 Internal imports:
-- `from app.metrics import metrics`
-- `from app.models.schemas import CallgraphRequest, GetRequest, OutlineRequest, QueryRequest, SearchRequest`
-- `from app.core.artifacts import load_artifact, verify_artifact`
-- `from app.core.callgraph import build_callgraph_from_file`
-- `from app.core.docs_store import get_docs_entry, get_docs_outline, search_docs`
-- `from app.core.store import get_outline`
-- `from app.core.store import get_symbol`
-- `from app.core.store import search_symbols`
-- `from app.security import require_auth`
+- `from voro_mcp.metrics import metrics`
+- `from voro_mcp.models.schemas import CallgraphRequest, GetRequest, OutlineRequest, QueryRequest, SearchRequest`
+- `from voro_mcp.core.artifacts import load_artifact, verify_artifact`
+- `from voro_mcp.core.callgraph import build_callgraph_from_file`
+- `from voro_mcp.core.docs_store import get_docs_entry, get_docs_outline, search_docs`
+- `from voro_mcp.core.store import get_outline`
+- `from voro_mcp.core.store import get_symbol`
+- `from voro_mcp.core.store import search_symbols`
+- `from voro_mcp.security import require_auth`

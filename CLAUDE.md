@@ -9,7 +9,8 @@
 - **Role:** Standalone hardened code-index service with artifact signing, symbol extraction, call graph analysis, and token-savings estimates
 - **Language:** Python 3.12, FastAPI, Pydantic, FastMCP
 - **Tests:** 8 unit test modules (`pytest tests/unit/`)
-- **Entry points:** `uvicorn app.main:app` (HTTP API) / `python -m app.mcp_server` (MCP stdio)
+- **Entry points:** `uvicorn voro_mcp.main:app` (HTTP API) / `python -m voro_mcp.mcp_server` (MCP stdio)
+- **Public package/listing identity:** `voro-mcp` / `io.github.voro-security/voro-mcp`
 - **Version:** 0.1.0
 
 ## Architecture Contract
@@ -23,7 +24,7 @@ Three product repos + voro-guard as infrastructure service. No cross-repo Python
 | **voro-web** | Web product | Renders ThreatReports from voro-brain |
 | **voro-guard** | Code index service | HTTP REST API + MCP stdio wrapper |
 
-**voro-brain is the primary consumer.** It spawns `python -m app.mcp_server` as a subprocess and communicates via MCP stdio protocol. The MCP server manages a FastAPI subprocess on `127.0.0.1:18765`.
+**voro-brain is the primary consumer.** It spawns `python -m voro_mcp.mcp_server` as a subprocess and communicates via MCP stdio protocol. The MCP server manages a FastAPI subprocess on `127.0.0.1:18765`.
 
 ## Architecture Role
 
@@ -31,7 +32,7 @@ voro-guard is a **service** called by voro-brain via MCP stdio subprocess. It is
 
 ```
 voro-brain (ExploitabilityAssessor)
-  → spawns: python -m app.mcp_server (stdio)
+  → spawns: python -m voro_mcp.mcp_server (stdio)
     → MCP server starts managed FastAPI subprocess on 127.0.0.1:18765
       → index_repo() → POST /v1/index → ArtifactEnvelope
       → search_symbols() → POST /v1/search → SymbolMatch[]
@@ -57,6 +58,9 @@ voro-brain (ExploitabilityAssessor)
 | GET | `/v1/metrics` | Service metrics snapshot | Bearer |
 
 ## MCP Tools (exposed via stdio)
+
+The repo/runtime remains `voro-guard`, but the public-facing MCP server identity
+exposed from `voro_mcp.mcp_server` is `io.github.voro-security/voro-mcp`.
 
 | Tool | Maps To | Purpose |
 |------|---------|---------|
@@ -94,8 +98,8 @@ Run these after API, MCP, signing, or artifact-schema changes:
 
 ```bash
 pytest tests/unit/
-uvicorn app.main:app --host 0.0.0.0 --port 8080
-python -m app.mcp_server
+uvicorn voro_mcp.main:app --host 0.0.0.0 --port 8080
+python -m voro_mcp.mcp_server
 ```
 
 ## Architectural Reference (eliminates re-exploration)
@@ -104,7 +108,7 @@ python -m app.mcp_server
 
 ```
 voro-guard/
-├── app/                              # Main application (~1,541 LOC)
+├── voro_mcp/                              # Main application (~1,541 LOC)
 │   ├── main.py                       # FastAPI app setup (15L)
 │   ├── config.py                     # Settings/env config (19L)
 │   ├── security.py                   # Bearer token auth (19L)
@@ -274,8 +278,8 @@ Symbol extraction is regex-based (line-by-line parsing, no AST). Solidity has ad
 #
 pip install -r requirements.txt                         # Install deps
 pytest tests/unit/                                      # Run tests
-uvicorn app.main:app --host 0.0.0.0 --port 8080       # Run HTTP API
-python -m app.mcp_server                                # Run MCP stdio server
+uvicorn voro_mcp.main:app --host 0.0.0.0 --port 8080       # Run HTTP API
+python -m voro_mcp.mcp_server                                # Run MCP stdio server
 docker build -t voro-guard . && docker run \
   -e CODE_INDEX_SIGNING_KEY=... \
   -e CODE_INDEX_SERVICE_TOKEN=... \

@@ -1,5 +1,5 @@
 """
-Unit tests for app.mcp_server.
+Unit tests for voro_mcp.mcp_server.
 
 All HTTP calls are mocked — the FastAPI server does NOT need to be running.
 Tests cover:
@@ -67,7 +67,7 @@ def _mock_get(response: httpx.Response):
 
 def test_search_symbols_proxies_to_v1_search():
     """search_symbols posts to /v1/search and returns the JSON response."""
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "results": [{"name": "do_stuff"}]}
     with _mock_post(_make_response(200, expected)) as mock:
@@ -87,7 +87,7 @@ def test_search_symbols_proxies_to_v1_search():
 
 
 def test_search_symbols_includes_source_fingerprint_when_provided():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
         mod.search_symbols(
@@ -101,7 +101,7 @@ def test_search_symbols_includes_source_fingerprint_when_provided():
 
 
 def test_search_symbols_omits_source_fingerprint_when_empty():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
         mod.search_symbols(
@@ -120,7 +120,7 @@ def test_search_symbols_omits_source_fingerprint_when_empty():
 
 
 def test_get_symbol_proxies_to_v1_get():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "results": [{"symbol": {"id": "sym-1"}}]}
     with _mock_post(_make_response(200, expected)) as mock:
@@ -137,7 +137,7 @@ def test_get_symbol_proxies_to_v1_get():
 
 
 def test_get_symbol_includes_source_fingerprint_when_provided():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
         mod.get_symbol(
@@ -156,7 +156,7 @@ def test_get_symbol_includes_source_fingerprint_when_provided():
 
 
 def test_outline_file_proxies_to_v1_outline():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "results": {"files": []}}
     with _mock_post(_make_response(200, expected)) as mock:
@@ -173,7 +173,7 @@ def test_outline_file_proxies_to_v1_outline():
 
 
 def test_outline_file_includes_source_fingerprint_when_provided():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True, "results": {}})) as mock:
         mod.outline_file(
@@ -191,7 +191,7 @@ def test_outline_file_includes_source_fingerprint_when_provided():
 
 
 def test_index_repo_proxies_to_v1_index():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {
         "ok": True,
@@ -215,7 +215,7 @@ def test_index_repo_proxies_to_v1_index():
 
 
 def test_index_repo_includes_source_revision_when_provided():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True})) as mock:
         mod.index_repo(
@@ -229,7 +229,7 @@ def test_index_repo_includes_source_revision_when_provided():
 
 
 def test_index_repo_omits_source_revision_when_empty():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True})) as mock:
         mod.index_repo(
@@ -248,7 +248,7 @@ def test_index_repo_omits_source_revision_when_empty():
 
 
 def test_http_4xx_raises_runtime_error_with_reason_code():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     error_body = {"reason_code": "artifact_missing", "message": "not found"}
     mock_resp = _make_response(404, error_body)
@@ -264,7 +264,7 @@ def test_http_4xx_raises_runtime_error_with_reason_code():
 
 
 def test_http_5xx_raises_runtime_error():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     error_body = {"reason_code": "internal_error", "message": "boom"}
     mock_resp = _make_response(500, error_body)
@@ -278,7 +278,7 @@ def test_http_5xx_raises_runtime_error():
 
 
 def test_transport_error_raises_runtime_error():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post_raises(httpx.ConnectError("connection refused")):
         with pytest.raises(RuntimeError) as exc_info:
@@ -292,7 +292,7 @@ def test_transport_error_raises_runtime_error():
 
 
 def test_index_docs_proxies_to_v1_index_with_docs_mode():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {
         "ok": True,
@@ -316,7 +316,7 @@ def test_index_docs_proxies_to_v1_index_with_docs_mode():
 
 
 def test_search_docs_proxies_to_v1_search_with_visibility():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "results": [{"section_id": "sec-1"}]}
     with _mock_post(_make_response(200, expected)) as mock:
@@ -336,7 +336,7 @@ def test_search_docs_proxies_to_v1_search_with_visibility():
 
 
 def test_search_docs_omits_optional_fields_when_empty():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
         mod.search_docs(
@@ -352,7 +352,7 @@ def test_search_docs_omits_optional_fields_when_empty():
 
 
 def test_get_doc_section_proxies_to_v1_get_by_doc_id():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "results": [{"document": {"doc_id": "doc-1"}}]}
     with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/get")) as mock:
@@ -371,7 +371,7 @@ def test_get_doc_section_proxies_to_v1_get_by_doc_id():
 
 
 def test_get_doc_section_proxies_to_v1_get_by_section_id_with_visibility():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True, "results": []}, url="http://127.0.0.1:18765/v1/get")) as mock:
         mod.get_doc_section(
@@ -387,7 +387,7 @@ def test_get_doc_section_proxies_to_v1_get_by_section_id_with_visibility():
 
 
 def test_get_doc_section_requires_doc_id_or_section_id():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with pytest.raises(ValueError) as exc_info:
         mod.get_doc_section(
@@ -398,7 +398,7 @@ def test_get_doc_section_requires_doc_id_or_section_id():
 
 
 def test_outline_docs_proxies_to_v1_outline_with_visibility():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "results": {"documents": []}}
     with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/outline")) as mock:
@@ -418,7 +418,7 @@ def test_outline_docs_proxies_to_v1_outline_with_visibility():
 
 
 def test_outline_docs_omits_optional_fields_when_empty():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True, "results": {"documents": []}}, url="http://127.0.0.1:18765/v1/outline")) as mock:
         mod.outline_docs(
@@ -438,7 +438,7 @@ def test_outline_docs_omits_optional_fields_when_empty():
 
 
 def test_publish_learning_state_proxies_to_learning_state_post():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "artifact_id": "learning-1"}
     with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/learning-state")) as mock:
@@ -460,7 +460,7 @@ def test_publish_learning_state_proxies_to_learning_state_post():
 
 
 def test_publish_learning_state_omits_empty_metadata():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_post(_make_response(200, {"ok": True}, url="http://127.0.0.1:18765/v1/learning-state")) as mock:
         mod.publish_learning_state(
@@ -475,7 +475,7 @@ def test_publish_learning_state_omits_empty_metadata():
 
 
 def test_publish_work_state_proxies_to_learning_state_post():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "artifact_id": "learning-1"}
     with _mock_post(_make_response(200, expected, url="http://127.0.0.1:18765/v1/learning-state")) as mock:
@@ -502,7 +502,7 @@ def test_publish_work_state_proxies_to_learning_state_post():
 
 
 def test_read_learning_state_proxies_to_learning_state_get():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "schema_version": "learning-v1"}
     with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/learning-state/art-1")) as mock:
@@ -514,7 +514,7 @@ def test_read_learning_state_proxies_to_learning_state_get():
 
 
 def test_list_learning_states_proxies_to_learning_states_get_with_filters():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "items": []}
     with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/learning-states")) as mock:
@@ -534,7 +534,7 @@ def test_list_learning_states_proxies_to_learning_states_get_with_filters():
 
 
 def test_list_learning_states_omits_empty_filters():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     with _mock_get(_make_response(200, {"ok": True, "items": []}, url="http://127.0.0.1:18765/v1/learning-states")) as mock:
         mod.list_learning_states(workspace_id="ws1")
@@ -543,7 +543,7 @@ def test_list_learning_states_omits_empty_filters():
 
 
 def test_read_governance_report_proxies_to_governance_report_get():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "schema_version": "learning-v1"}
     with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/governance-report")) as mock:
@@ -555,7 +555,7 @@ def test_read_governance_report_proxies_to_governance_report_get():
 
 
 def test_list_governance_reports_proxies_to_governance_reports_get():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     expected = {"ok": True, "items": []}
     with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/governance-reports")) as mock:
@@ -572,7 +572,7 @@ def test_list_governance_reports_proxies_to_governance_reports_get():
 
 
 def test_auth_header_added_when_token_set():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     original_token = mod.INDEX_GUARD_TOKEN
     try:
@@ -586,7 +586,7 @@ def test_auth_header_added_when_token_set():
 
 
 def test_auth_header_absent_when_no_token():
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     original_token = mod.INDEX_GUARD_TOKEN
     try:
@@ -606,7 +606,7 @@ def test_auth_header_absent_when_no_token():
 
 def test_base_url_used_for_all_tools():
     """All tools POST to INDEX_GUARD_URL, not a hardcoded host."""
-    import app.mcp_server as mod
+    import voro_mcp.mcp_server as mod
 
     original_url = mod.INDEX_GUARD_URL
     try:
@@ -616,3 +616,36 @@ def test_base_url_used_for_all_tools():
         assert mock.call_args.args[0].startswith("http://custom-host:9999")
     finally:
         mod.INDEX_GUARD_URL = original_url
+
+
+def test_managed_artifact_root_defaults_to_user_state_dir(monkeypatch):
+    import voro_mcp.mcp_server as mod
+
+    monkeypatch.delenv("VORO_MCP_STATE_DIR", raising=False)
+    monkeypatch.setenv("XDG_STATE_HOME", "/tmp/xdg-state")
+
+    assert mod._default_managed_artifact_root() == "/tmp/xdg-state/voro-mcp/artifacts"
+
+
+def test_start_managed_server_sets_artifact_root_when_missing(monkeypatch):
+    import voro_mcp.mcp_server as mod
+
+    monkeypatch.delenv("ARTIFACT_ROOT", raising=False)
+    monkeypatch.setattr(mod, "_managed_proc", None)
+    monkeypatch.setattr(mod, "_STARTUP_TIMEOUT", 1)
+    monkeypatch.setattr(mod, "_MANAGED_PORT", 18765)
+    monkeypatch.setenv("XDG_STATE_HOME", "/tmp/xdg-state")
+
+    proc = MagicMock()
+    proc.terminate = MagicMock()
+    proc.wait = MagicMock()
+
+    ready = MagicMock(status_code=200)
+
+    with patch("subprocess.Popen", return_value=proc) as popen_mock, patch("httpx.get", return_value=ready):
+        mod._start_managed_server()
+
+    env = popen_mock.call_args.kwargs["env"]
+    assert env["ARTIFACT_ROOT"] == "/tmp/xdg-state/voro-mcp/artifacts"
+    assert "voro_mcp.main:app" in popen_mock.call_args.args[0]
+    mod._managed_proc = None

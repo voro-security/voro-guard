@@ -5,10 +5,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import settings
-from app.models.schemas import GetRequest, IndexRequest, OutlineRequest, SearchRequest
-from app.routes.index import create_index
-from app.routes.query import get_outline, get_symbol, search_index
+from voro_mcp.config import settings
+from voro_mcp.models.schemas import GetRequest, IndexRequest, OutlineRequest, SearchRequest
+from voro_mcp.routes.index import create_index
+from voro_mcp.routes.query import get_outline, get_symbol, search_index
 
 
 def test_index_and_search_local_repo(tmp_path: Path) -> None:

@@ -7,8 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import settings
-from app.main import app
+from voro_mcp.config import settings
+from voro_mcp.main import app
 
 
 client = TestClient(app)

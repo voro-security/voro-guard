@@ -7,8 +7,8 @@ if str(ROOT) not in sys.path:
 
 from fastapi import HTTPException
 
-from app.config import settings
-from app.security import require_auth
+from voro_mcp.config import settings
+from voro_mcp.security import require_auth
 
 
 def setup_function() -> None:

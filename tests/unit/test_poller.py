@@ -1,4 +1,4 @@
-"""Tests for the background polling loop (app.core.poller)."""
+"""Tests for the background polling loop (voro_mcp.core.poller)."""
 
 import asyncio
 import json
@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.core.poller import RepoPoller
+from voro_mcp.core.poller import RepoPoller
 
 
 @pytest.fixture
@@ -91,7 +91,7 @@ def test_fetch_head_sha_success(single_repo_config):
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("app.core.poller.httpx.AsyncClient", return_value=mock_client):
+        with patch("voro_mcp.core.poller.httpx.AsyncClient", return_value=mock_client):
             sha = await poller._fetch_head_sha("owner", "repo-a")
 
         assert sha == "abc123def456"
@@ -111,7 +111,7 @@ def test_fetch_head_sha_404_returns_none(single_repo_config):
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("app.core.poller.httpx.AsyncClient", return_value=mock_client):
+        with patch("voro_mcp.core.poller.httpx.AsyncClient", return_value=mock_client):
             sha = await poller._fetch_head_sha("owner", "repo-a")
 
         assert sha is None
@@ -128,7 +128,7 @@ def test_fetch_head_sha_network_error_returns_none(single_repo_config):
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("app.core.poller.httpx.AsyncClient", return_value=mock_client):
+        with patch("voro_mcp.core.poller.httpx.AsyncClient", return_value=mock_client):
             sha = await poller._fetch_head_sha("owner", "repo-a")
 
         assert sha is None
@@ -144,19 +144,19 @@ def test_skip_when_revision_matches(single_repo_config):
         current_sha = "abc123def456"
 
         with patch.object(poller, "_fetch_head_sha", new_callable=AsyncMock, return_value=current_sha), \
-             patch("app.core.poller.load_latest_artifact", return_value={"source_revision": current_sha}), \
+             patch("voro_mcp.core.poller.load_latest_artifact", return_value={"source_revision": current_sha}), \
              patch.object(poller, "_trigger_reindex", new_callable=AsyncMock) as mock_reindex:
 
             entry = poller._repos[0]
             owner, repo = entry["source_id"].split("/", 1)
             head_sha = await poller._fetch_head_sha(owner, repo)
-            from app.core.identity import compute_artifact_identity
-            from app.core.poller import load_latest_artifact as _laa
+            from voro_mcp.core.identity import compute_artifact_identity
+            from voro_mcp.core.poller import load_latest_artifact as _laa
             artifact_id = compute_artifact_identity(
                 entry["workspace_id"], entry["source_type"], entry["source_id"]
             )
             # Use the module-level patched version
-            import app.core.poller as poller_mod
+            import voro_mcp.core.poller as poller_mod
             latest = poller_mod.load_latest_artifact(entry["workspace_id"], artifact_id)
             stored_revision = latest.get("source_revision", "") if latest else ""
             if stored_revision != head_sha:
@@ -176,17 +176,17 @@ def test_trigger_on_sha_change(single_repo_config):
         new_sha = "new222"
 
         with patch.object(poller, "_fetch_head_sha", new_callable=AsyncMock, return_value=new_sha), \
-             patch("app.core.poller.load_latest_artifact", return_value={"source_revision": old_sha}), \
+             patch("voro_mcp.core.poller.load_latest_artifact", return_value={"source_revision": old_sha}), \
              patch.object(poller, "_trigger_reindex", new_callable=AsyncMock) as mock_reindex:
 
             entry = poller._repos[0]
             owner, repo = entry["source_id"].split("/", 1)
             head_sha = await poller._fetch_head_sha(owner, repo)
-            from app.core.identity import compute_artifact_identity
+            from voro_mcp.core.identity import compute_artifact_identity
             artifact_id = compute_artifact_identity(
                 entry["workspace_id"], entry["source_type"], entry["source_id"]
             )
-            from app.core.artifacts import load_latest_artifact
+            from voro_mcp.core.artifacts import load_latest_artifact
             latest = load_latest_artifact(entry["workspace_id"], artifact_id)
             stored_revision = latest.get("source_revision", "") if latest else ""
             if stored_revision != head_sha:
@@ -205,17 +205,17 @@ def test_trigger_on_first_index(single_repo_config):
         new_sha = "first123"
 
         with patch.object(poller, "_fetch_head_sha", new_callable=AsyncMock, return_value=new_sha), \
-             patch("app.core.poller.load_latest_artifact", return_value=None), \
+             patch("voro_mcp.core.poller.load_latest_artifact", return_value=None), \
              patch.object(poller, "_trigger_reindex", new_callable=AsyncMock) as mock_reindex:
 
             entry = poller._repos[0]
             owner, repo = entry["source_id"].split("/", 1)
             head_sha = await poller._fetch_head_sha(owner, repo)
-            from app.core.identity import compute_artifact_identity
+            from voro_mcp.core.identity import compute_artifact_identity
             artifact_id = compute_artifact_identity(
                 entry["workspace_id"], entry["source_type"], entry["source_id"]
             )
-            from app.core.artifacts import load_latest_artifact
+            from voro_mcp.core.artifacts import load_latest_artifact
             latest = load_latest_artifact(entry["workspace_id"], artifact_id)
             stored_revision = latest.get("source_revision", "") if latest else ""
             if stored_revision != head_sha:
@@ -243,7 +243,7 @@ def test_error_isolation_between_repos(poll_config):
             call_log.append((entry["source_id"], sha))
 
         with patch.object(poller, "_fetch_head_sha", side_effect=mock_fetch), \
-             patch("app.core.poller.load_latest_artifact", return_value={"source_revision": "old"}), \
+             patch("voro_mcp.core.poller.load_latest_artifact", return_value={"source_revision": "old"}), \
              patch.object(poller, "_trigger_reindex", side_effect=mock_reindex):
 
             for entry in poller._repos:

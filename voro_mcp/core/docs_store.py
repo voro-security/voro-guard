@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.core.docs_ingest import discover_local_docs
-from app.core.docs_parser import parse_markdown_document
+from voro_mcp.core.docs_ingest import discover_local_docs
+from voro_mcp.core.docs_parser import parse_markdown_document
 
 
 def build_docs_payload(

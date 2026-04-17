@@ -9,7 +9,7 @@ Can operate in two modes:
      instance without managing its lifecycle.
 
 Entry point:
-    python -m app.mcp_server
+    python -m voro_mcp.mcp_server
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 import hashlib
 import logging
 import os
+from pathlib import Path
 import signal
 import subprocess
 import sys
@@ -78,6 +79,19 @@ def _build_auth_headers() -> dict[str, str]:
     return {}
 
 
+def _default_managed_artifact_root() -> str:
+    override = os.getenv("VORO_MCP_STATE_DIR", "").strip()
+    if override:
+        base = Path(override).expanduser()
+    else:
+        xdg_state_home = os.getenv("XDG_STATE_HOME", "").strip()
+        if xdg_state_home:
+            base = Path(xdg_state_home).expanduser() / "voro-mcp"
+        else:
+            base = Path.home() / ".local" / "state" / "voro-mcp"
+    return str((base / "artifacts").resolve())
+
+
 def _start_managed_server() -> None:
     """Start the FastAPI server as a subprocess on _MANAGED_PORT."""
     global _managed_proc
@@ -86,12 +100,13 @@ def _start_managed_server() -> None:
 
     env = os.environ.copy()
     env["UVICORN_PORT"] = str(_MANAGED_PORT)  # passed via CLI below
+    env.setdefault("ARTIFACT_ROOT", _default_managed_artifact_root())
 
     cmd = [
         sys.executable,
         "-m",
         "uvicorn",
-        "app.main:app",
+        "voro_mcp.main:app",
         "--host",
         "127.0.0.1",
         "--port",
@@ -223,9 +238,9 @@ async def _lifespan(server: FastMCP):
 
 
 mcp = FastMCP(
-    name="voro-guard",
+    name="io.github.voro-security/voro-mcp",
     instructions=(
-        "Code symbol index for voro-guard. "
+        "Code intelligence and signed artifact retrieval for voro-guard. "
         "Use search_symbols to find functions/classes by name, "
         "get_symbol to retrieve full details for a specific symbol ID, "
         "outline_file to list all symbols in a repository artifact, "

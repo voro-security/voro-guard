@@ -8,10 +8,10 @@ import time
 
 import httpx
  
-from app.config import settings
-from app.core.ingest import discover_local_files, read_text_file
-from app.core.parser import extract_symbols, language_for_path
-from app.core.store import build_index_payload
+from voro_mcp.config import settings
+from voro_mcp.core.ingest import discover_local_files, read_text_file
+from voro_mcp.core.parser import extract_symbols, language_for_path
+from voro_mcp.core.store import build_index_payload
 
 
 def _is_github_ref(repo_ref: str) -> bool:

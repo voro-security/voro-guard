@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path, PurePosixPath
 import fnmatch
 
-from app.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root
+from voro_mcp.core.safety import is_binary_extension, is_secret_file, is_symlink_escape, path_within_root
 
 DEFAULT_INCLUDE_GLOBS = [
     "README.md",

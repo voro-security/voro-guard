@@ -7,9 +7,9 @@ exemptions:
     reason: scripts/validate_docs_contract.py still requires the deprecated '# Generated At:' header. Phase 6 keeps validator surfaces unchanged.
 artifacts:
   - id: codebase-map
-    description: Regenerate docs/CODEBASE_MAP.md from app structure
+    description: Regenerate docs/CODEBASE_MAP.md from voro_mcp structure
     sources:
-      - app/**
+      - voro_mcp/**
       - scripts/generate_codebase_map.py
     generator:
       - python3

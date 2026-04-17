@@ -1,6 +1,6 @@
 from fastapi import Header, HTTPException
 
-from app.config import settings
+from voro_mcp.config import settings
 
 
 def require_auth(authorization: str | None = Header(default=None)) -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.signing import sha256_hex
+from voro_mcp.core.signing import sha256_hex
 
 REVISION_UNAVAILABLE = "revision:unavailable"
 REPO_REF_SENTINEL = "source:unknown"

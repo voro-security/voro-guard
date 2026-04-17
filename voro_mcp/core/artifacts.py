@@ -5,8 +5,8 @@ from typing import Any, Tuple
 import json
 import re
 
-from app.config import settings
-from app.core.signing import canonical_json, sha256_hex, verify_signature
+from voro_mcp.config import settings
+from voro_mcp.core.signing import canonical_json, sha256_hex, verify_signature
 
 _SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._:-]+$")
 

@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core.docs_parser import parse_markdown_document
+from voro_mcp.core.docs_parser import parse_markdown_document
 
 
 def test_parse_markdown_document_extracts_frontmatter_headers_and_sections() -> None:

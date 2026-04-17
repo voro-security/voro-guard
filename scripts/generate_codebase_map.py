@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate CODEBASE_MAP.md from app/ using the ast module.
+"""Generate CODEBASE_MAP.md from voro_mcp/ using the ast module.
 
-Walks every .py file under app/, extracts classes, methods, standalone
+Walks every .py file under voro_mcp/, extracts classes, methods, standalone
 functions, and internal imports. Outputs grouped-by-package Markdown.
 """
 
@@ -11,15 +11,15 @@ from collections import defaultdict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SRC_DIR = REPO_ROOT / "app"
+SRC_DIR = REPO_ROOT / "voro_mcp"
 OUTPUT = REPO_ROOT / "docs" / "CODEBASE_MAP.md"
 
 
 def source_revision() -> str:
-    """Return the latest committed app/ revision, or unknown if unavailable."""
+    """Return the latest committed voro_mcp/ revision, or unknown if unavailable."""
     try:
         return subprocess.check_output(
-            ["git", "log", "-1", "--format=%h", "--", "app"],
+            ["git", "log", "-1", "--format=%h", "--", "voro_mcp"],
             cwd=REPO_ROOT,
             text=True,
         ).strip()
@@ -55,7 +55,7 @@ def parse_file(filepath: Path) -> dict:
             functions.append(node.name)
 
         elif isinstance(node, ast.ImportFrom):
-            if node.module and node.module.startswith("app"):
+            if node.module and node.module.startswith("voro_mcp"):
                 names = [alias.name for alias in node.names]
                 imports.append(f"from {node.module} import {', '.join(names)}")
 
@@ -69,7 +69,7 @@ def parse_file(filepath: Path) -> dict:
 
 
 def collect_files() -> list[Path]:
-    """Collect all .py files under app/, sorted."""
+    """Collect all .py files under voro_mcp/, sorted."""
     return sorted(SRC_DIR.rglob("*.py"))
 
 
@@ -79,7 +79,7 @@ def group_by_package(entries: list[dict]) -> dict[str, list[dict]]:
     for entry in entries:
         parts = Path(entry["path"]).parts
         # Package is everything up to but not including the filename
-        pkg = "/".join(parts[:-1]) if len(parts) > 1 else "app"
+        pkg = "/".join(parts[:-1]) if len(parts) > 1 else "voro_mcp"
         groups[pkg].append(entry)
     return dict(sorted(groups.items()))
 

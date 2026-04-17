@@ -11,13 +11,13 @@ from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query
-from app.routes.learning import (
+from voro_mcp.routes.learning import (
     _load_learning_state_candidates,
     _verify_learning_artifact,
     publish_learning_state,
 )
-from app.models.schemas import LearningStatePublishRequest
-from app.security import require_auth
+from voro_mcp.models.schemas import LearningStatePublishRequest
+from voro_mcp.security import require_auth
 
 router = APIRouter()
 
