@@ -15,6 +15,7 @@ jobs:
     env:
       REPO_NAME: ${{ github.event.repository.name }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
       PR_BODY: ${{ github.event.pull_request.body }}
       SHORT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
     steps:
@@ -40,12 +41,37 @@ jobs:
                   ('SPRINT_NAME', 'sprint'),
                   ('TASK_DONE', 'task'),
                   ('WHATS_NEXT', 'whats_next'),
+                  ('PARSE_WARNINGS', 'warnings'),
               ]:
                   v = p[json_key]
+                  if isinstance(v, list):
+                      v = '\n'.join(v) if v else 'NONE'
                   f.write(f'{gha_key}<<__EOF__\n{v}\n__EOF__\n')
           "
         env:
           PARSED: ${{ steps.parse.outputs.parsed }}
+
+      - name: Comment when PR template fallbacks were used
+        if: env.PARSE_WARNINGS != 'NONE'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              "⚠️ `update-status` completed with PR-template fallbacks.",
+              "",
+              "Missing or empty merge metadata was defaulted so post-merge automation could continue.",
+              "",
+              "Warnings:",
+              process.env.PARSE_WARNINGS.split("\n").map(line => `- ${line}`).join("\n"),
+              "",
+              "For future PRs, use the repo PR template so merge-triggered status automation has complete fields."
+            ].join("\n");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
 
       - name: Checkout voro-docs for sprint validation and updates
         env:
