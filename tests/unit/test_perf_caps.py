@@ -5,8 +5,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import settings
-from app.core.indexer import build_payload_from_repo
+from voro_mcp.config import settings
+from voro_mcp.core.indexer import build_payload_from_repo
 
 
 def test_indexing_respects_file_cap(tmp_path: Path) -> None:

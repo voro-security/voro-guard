@@ -2,15 +2,15 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 import httpx
 
-from app.models.schemas import IndexRequest, ArtifactEnvelope, Manifest
-from app.core.signing import canonical_json, sha256_hex, sign_hash
-from app.core.artifacts import persist_artifact, load_artifact, load_latest_artifact
-from app.core.indexer import build_payload_from_repo
-from app.core.docs_store import build_docs_payload_from_repo
-from app.core.identity import REVISION_UNAVAILABLE, source_strategy, compute_artifact_identity
-from app.config import settings
-from app.security import require_auth
-from app.metrics import metrics
+from voro_mcp.models.schemas import IndexRequest, ArtifactEnvelope, Manifest
+from voro_mcp.core.signing import canonical_json, sha256_hex, sign_hash
+from voro_mcp.core.artifacts import persist_artifact, load_artifact, load_latest_artifact
+from voro_mcp.core.indexer import build_payload_from_repo
+from voro_mcp.core.docs_store import build_docs_payload_from_repo
+from voro_mcp.core.identity import REVISION_UNAVAILABLE, source_strategy, compute_artifact_identity
+from voro_mcp.config import settings
+from voro_mcp.security import require_auth
+from voro_mcp.metrics import metrics
 
 router = APIRouter(dependencies=[Depends(require_auth)])
 

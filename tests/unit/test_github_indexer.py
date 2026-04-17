@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core.indexer import build_payload_from_repo
+from voro_mcp.core.indexer import build_payload_from_repo
 
 
 class _Resp:
@@ -37,7 +37,7 @@ def test_github_owner_repo_ref_indexing(monkeypatch):
             return _Resp(text_data="def scan_contract(x):\n    return x\n")
         return _Resp(status_code=404)
 
-    monkeypatch.setattr("app.core.indexer.httpx.get", fake_get)
+    monkeypatch.setattr("voro_mcp.core.indexer.httpx.get", fake_get)
     payload = build_payload_from_repo("owner/repo")
     assert payload["repo_ref"] == "owner/repo"
     assert payload["stats"]["file_count"] == 1
@@ -52,9 +52,8 @@ def test_github_url_ref_indexing(monkeypatch):
             return _Resp(text_data="export function runAudit() { return true }\n")
         return _Resp(status_code=404)
 
-    monkeypatch.setattr("app.core.indexer.httpx.get", fake_get)
+    monkeypatch.setattr("voro_mcp.core.indexer.httpx.get", fake_get)
     payload = build_payload_from_repo("https://github.com/acme/scan-repo")
     assert payload["repo_ref"] == "acme/scan-repo"
     assert payload["stats"]["file_count"] == 1
     assert payload["stats"]["symbol_count"] >= 1
-

@@ -8,12 +8,12 @@ if str(ROOT) not in sys.path:
 
 from fastapi import HTTPException
 
-from app.config import settings
-from app.core.artifacts import artifact_path
-from app.models.schemas import IndexRequest, QueryRequest
-from app.routes.index import create_index
-from app.routes.query import get_outline, get_symbol, query_index, search_index
-from app.models.schemas import GetRequest, OutlineRequest, SearchRequest
+from voro_mcp.config import settings
+from voro_mcp.core.artifacts import artifact_path
+from voro_mcp.models.schemas import IndexRequest, QueryRequest
+from voro_mcp.routes.index import create_index
+from voro_mcp.routes.query import get_outline, get_symbol, query_index, search_index
+from voro_mcp.models.schemas import GetRequest, OutlineRequest, SearchRequest
 
 
 def _load_json(path: Path) -> dict:

@@ -34,7 +34,7 @@ Current `voro-mcp` capabilities:
   Plain English: read signed learning-state, governance-report, and hydration
   artifacts that were already produced elsewhere.
 
-The main MCP tools currently exposed by `app.mcp_server` are:
+The main MCP tools currently exposed by `voro_mcp.mcp_server` are:
 
 - `index_repo`
 - `search_symbols`
@@ -90,7 +90,7 @@ voro-mcp
 Equivalent module entry:
 
 ```bash
-python -m app.mcp_server
+python -m voro_mcp.mcp_server
 ```
 
 ## First Run With An MCP Client
@@ -148,7 +148,7 @@ pytest tests/unit/
 Run the HTTP service directly:
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8080
+uvicorn voro_mcp.main:app --host 0.0.0.0 --port 8080
 ```
 
 Quick local checks:
@@ -177,10 +177,10 @@ curl -sS http://127.0.0.1:8080/health
 
 ## Key Paths
 
-- `app/main.py` — FastAPI app setup
-- `app/mcp_server.py` — MCP stdio server and managed local runtime
-- `app/routes/` — HTTP route handlers
-- `app/core/` — indexing, parsing, signing, artifact, and call graph logic
+- `voro_mcp/main.py` — FastAPI app setup
+- `voro_mcp/mcp_server.py` — MCP stdio server and managed local runtime
+- `voro_mcp/routes/` — HTTP route handlers
+- `voro_mcp/core/` — indexing, parsing, signing, artifact, and call graph logic
 - `docs/CODEBASE_MAP.md` — repo structure reference
 
 ## Documentation

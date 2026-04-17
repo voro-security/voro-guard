@@ -5,10 +5,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core.callgraph import parse_solidity_functions
-from app.core.parser import extract_symbols
-from app.models.schemas import CallgraphRequest
-from app.routes.query import get_callgraph
+from voro_mcp.core.callgraph import parse_solidity_functions
+from voro_mcp.core.parser import extract_symbols
+from voro_mcp.models.schemas import CallgraphRequest
+from voro_mcp.routes.query import get_callgraph
 
 
 def _sample_contract() -> str:

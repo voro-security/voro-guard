@@ -5,10 +5,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import settings
-from app.models.schemas import IndexRequest
-from app.routes.index import create_index
-import app.core.indexer as indexer
+from voro_mcp.config import settings
+from voro_mcp.models.schemas import IndexRequest
+from voro_mcp.routes.index import create_index
+import voro_mcp.core.indexer as indexer
 
 
 def test_github_incremental_reuses_unchanged_files(tmp_path: Path, monkeypatch) -> None:

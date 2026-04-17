@@ -8,10 +8,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import settings
-from app.models.schemas import LearningStatePublishRequest
-from app.routes.learning import publish_learning_state
-from app.routes.hydration import (
+from voro_mcp.config import settings
+from voro_mcp.models.schemas import LearningStatePublishRequest
+from voro_mcp.routes.learning import publish_learning_state
+from voro_mcp.routes.hydration import (
     hydrate_session,
     _freshness_for,
     _worst_freshness,

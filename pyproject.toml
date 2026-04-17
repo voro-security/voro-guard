@@ -39,9 +39,9 @@ Repository = "https://github.com/voro-security/voro-guard"
 Documentation = "https://github.com/voro-security/voro-guard/blob/main/README.voro-mcp.md"
 
 [project.scripts]
-voro-mcp = "app.mcp_server:main"
+voro-mcp = "voro_mcp.mcp_server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*"]
+include = ["voro_mcp*"]
 namespaces = true

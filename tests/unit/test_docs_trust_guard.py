@@ -8,12 +8,12 @@ if str(ROOT) not in sys.path:
 import pytest
 from fastapi import HTTPException
 
-from app.config import settings
-from app.core.artifacts import load_artifact, persist_artifact, verify_artifact
-from app.core.docs_store import build_docs_payload
-from app.core.signing import canonical_json, sha256_hex, sign_hash
-from app.models.schemas import ArtifactEnvelope, GetRequest, Manifest, OutlineRequest, SearchRequest
-from app.routes.query import get_outline, get_symbol, search_index
+from voro_mcp.config import settings
+from voro_mcp.core.artifacts import load_artifact, persist_artifact, verify_artifact
+from voro_mcp.core.docs_store import build_docs_payload
+from voro_mcp.core.signing import canonical_json, sha256_hex, sign_hash
+from voro_mcp.models.schemas import ArtifactEnvelope, GetRequest, Manifest, OutlineRequest, SearchRequest
+from voro_mcp.routes.query import get_outline, get_symbol, search_index
 
 
 def setup_function() -> None:

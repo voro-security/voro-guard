@@ -5,13 +5,13 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core.docs_ingest import discover_local_docs
-from app.core.docs_parser import parse_markdown_document
-from app.core.docs_store import build_docs_payload
-from app.config import settings
-from app.models.schemas import GetRequest, IndexRequest, OutlineRequest, SearchRequest
-from app.routes.index import create_index
-from app.routes.query import get_outline, get_symbol, search_index
+from voro_mcp.core.docs_ingest import discover_local_docs
+from voro_mcp.core.docs_parser import parse_markdown_document
+from voro_mcp.core.docs_store import build_docs_payload
+from voro_mcp.config import settings
+from voro_mcp.models.schemas import GetRequest, IndexRequest, OutlineRequest, SearchRequest
+from voro_mcp.routes.index import create_index
+from voro_mcp.routes.query import get_outline, get_symbol, search_index
 
 
 def test_discover_local_docs_and_build_payload(tmp_path: Path) -> None:

@@ -3,18 +3,18 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from app.config import settings
-from app.routes.hydration import router as hydration_router
-from app.routes.index import router as index_router
-from app.routes.learning import router as learning_router
-from app.routes.query import router as query_router
+from voro_mcp.config import settings
+from voro_mcp.routes.hydration import router as hydration_router
+from voro_mcp.routes.index import router as index_router
+from voro_mcp.routes.learning import router as learning_router
+from voro_mcp.routes.query import router as query_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     poller = None
     if settings.poller_enabled:
-        from app.core.poller import RepoPoller
+        from voro_mcp.core.poller import RepoPoller
         poller = RepoPoller(Path(settings.poller_config))
         await poller.start()
     yield

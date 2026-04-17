@@ -4,7 +4,7 @@ from pathlib import Path
 import hashlib
 import re
 
-from app.core.callgraph import parse_solidity_functions
+from voro_mcp.core.callgraph import parse_solidity_functions
 
 LANGUAGE_EXTENSIONS = {
     ".py": "python",

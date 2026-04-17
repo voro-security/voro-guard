@@ -46,7 +46,7 @@ voro-mcp
 Equivalent direct module entry:
 
 ```bash
-python -m app.mcp_server
+python -m voro_mcp.mcp_server
 ```
 
 ## First Run With An MCP Client

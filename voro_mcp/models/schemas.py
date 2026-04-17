@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal, Any
 
-from app.core.identity import (
+from voro_mcp.core.identity import (
     compute_source_fingerprint,
     normalize_source_fields,
     REPO_REF_SENTINEL,
