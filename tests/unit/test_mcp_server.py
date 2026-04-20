@@ -743,6 +743,25 @@ def test_auth_header_does_not_recover_token_for_remote_guard_url():
         mod.INDEX_GUARD_URL = original_url
 
 
+def test_auth_header_does_not_recover_token_for_local_non_managed_port():
+    import voro_mcp.mcp_server as mod
+
+    original_token = mod.INDEX_GUARD_TOKEN
+    original_url = mod.INDEX_GUARD_URL
+    try:
+        mod.INDEX_GUARD_TOKEN = ""
+        mod.INDEX_GUARD_URL = "http://127.0.0.1:8080"
+        with patch.object(mod, "_recover_token_from_local_guard_process", return_value="") as recover_mock:
+            with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
+                mod.search_symbols(query="x", workspace_id="ws1", artifact_id="art1")
+        headers = mock.call_args.kwargs["headers"]
+        assert "Authorization" not in headers
+        recover_mock.assert_called_once()
+    finally:
+        mod.INDEX_GUARD_TOKEN = original_token
+        mod.INDEX_GUARD_URL = original_url
+
+
 # ---------------------------------------------------------------------------
 # URL construction
 # ---------------------------------------------------------------------------

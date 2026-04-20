@@ -128,15 +128,32 @@ def _load_repo_local_env() -> dict[str, str]:
 
 def _is_local_guard_url() -> bool:
     try:
-        host = (urlparse(INDEX_GUARD_URL).hostname or "").strip().lower()
+        parsed = urlparse(INDEX_GUARD_URL)
+        host = (parsed.hostname or "").strip().lower()
     except Exception:
         return False
     return host in {"127.0.0.1", "localhost"}
 
 
+def _is_local_managed_guard_url() -> bool:
+    if not _is_local_guard_url():
+        return False
+    try:
+        parsed = urlparse(INDEX_GUARD_URL)
+        port = parsed.port
+        if port is None:
+            if parsed.scheme == "https":
+                port = 443
+            else:
+                port = 80
+    except Exception:
+        return False
+    return port == _MANAGED_PORT
+
+
 def _recover_token_from_local_guard_process() -> str:
     """Best-effort fallback for local authenticated guard reuse."""
-    if not _is_local_guard_url():
+    if not _is_local_managed_guard_url():
         return ""
 
     proc_root = Path("/proc")

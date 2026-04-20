@@ -54,6 +54,24 @@ def test_non_managed_runtime_preserves_explicit_signing_key(tmp_path: Path, monk
     assert not state_path.exists()
 
 
+def test_local_managed_runtime_falls_back_to_transient_key_on_oserror(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("UVICORN_PORT", "18765")
+    monkeypatch.delenv("CODE_INDEX_SIGNING_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    import voro_mcp.config as config_mod
+
+    def raise_oserror(*args, **kwargs):
+        raise OSError("read-only home")
+
+    monkeypatch.setattr(Path, "mkdir", raise_oserror)
+    config_mod = importlib.reload(config_mod)
+    state_path = tmp_path / ".claude" / "state" / "voro-guard-local-signing.json"
+
+    assert config_mod.settings.signing_key
+    assert not state_path.exists()
+
+
 def test_learning_routes_disabled_return_404(tmp_path: Path) -> None:
     settings.artifact_root = str(tmp_path / "artifacts")
 

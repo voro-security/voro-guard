@@ -28,23 +28,28 @@ def _load_or_create_local_managed_signing_key() -> str:
         pass
 
     key = secrets.token_hex(32)
-    _LOCAL_SIGNING_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _LOCAL_SIGNING_STATE_PATH.write_text(
-        json.dumps(
-            {
-                "schema_version": "voro-guard-local-signing-v1",
-                "scope": "managed-local-18765",
-                "signing_key": key,
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
     try:
-        os.chmod(_LOCAL_SIGNING_STATE_PATH, 0o600)
+        _LOCAL_SIGNING_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _LOCAL_SIGNING_STATE_PATH.write_text(
+            json.dumps(
+                {
+                    "schema_version": "voro-guard-local-signing-v1",
+                    "scope": "managed-local-18765",
+                    "signing_key": key,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        try:
+            os.chmod(_LOCAL_SIGNING_STATE_PATH, 0o600)
+        except OSError:
+            pass
     except OSError:
-        pass
+        # Preserve strict-trust startup for managed local runtime even when
+        # HOME/state storage is not writable in the current environment.
+        return key
     return key
 
 
