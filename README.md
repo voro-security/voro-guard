@@ -187,9 +187,12 @@ curl -sS http://127.0.0.1:8080/health
 
 - `README.voro-mcp.md` — package-facing README for the public `voro-mcp`
   install surface
+- `CLAUDE.md` — agent entrypoint and architecture constraints
 - `docs/CODEBASE_MAP.md` — generated structural reference for the repo
 - `docs/DEPLOY_ZEABUR.md` — Zeabur deployment reference for the underlying
   service runtime
+- [secrets.md](/home/alienblackunix/dev/voro/voro-docs/docs/secrets.md) —
+  workspace secret-management policy
 
 ## Project Context
 
@@ -198,3 +201,10 @@ curl -sS http://127.0.0.1:8080/health
   `io.github.voro-security/voro-mcp`.
 - `voro-guard` is the underlying service and runtime that powers the public
   `voro-mcp` package.
+
+## Local Endpoint Authority
+
+- `127.0.0.1:18765` is the managed local hydration/publish endpoint used by
+  MCP-backed local startup and closeout flows.
+- `127.0.0.1:8080` is the direct FastAPI HTTP surface and core health
+  endpoint.

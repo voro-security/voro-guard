@@ -566,6 +566,106 @@ def test_list_governance_reports_proxies_to_governance_reports_get():
     assert result == expected
 
 
+def test_hydrate_session_proxies_full_identity_filters():
+    import voro_mcp.mcp_server as mod
+
+    expected = {"ok": True, "schema_version": "hydration-response-v1"}
+    with _mock_get(_make_response(200, expected, url="http://127.0.0.1:18765/v1/hydrate")) as mock:
+        result = mod.hydrate_session(
+            workspace_id="ws1",
+            agent_id="claude_1",
+            repo="voro-guard",
+            worktree_path="/home/user/dev/voro/voro-guard",
+            workspace_root="/home/user/dev/voro",
+        )
+    assert "/v1/hydrate" in mock.call_args.args[0]
+    params = mock.call_args.kwargs["params"]
+    assert params == {
+        "workspace_id": "ws1",
+        "agent_id": "claude_1",
+        "repo": "voro-guard",
+        "worktree_path": "/home/user/dev/voro/voro-guard",
+        "workspace_root": "/home/user/dev/voro",
+    }
+    assert result == expected
+
+
+def test_hydrate_session_end_to_end_uses_workspace_root_filter(tmp_path: Path):
+    import voro_mcp.mcp_server as mod
+    from voro_mcp.config import settings
+    from voro_mcp.models.schemas import LearningStatePublishRequest
+    from voro_mcp.routes.learning import publish_learning_state
+    from voro_mcp.main import app
+    from fastapi.testclient import TestClient
+
+    settings.trust_mode = "strict"
+    settings.signing_key = "dev-signing-key"
+    settings.adaptive_learning_enabled = True
+    settings.service_token = ""
+    settings.artifact_root = str(tmp_path / "artifacts")
+
+    ws = "mcp-hydrate-ws"
+    common_state = {
+        "schema_version": "work-state-v1",
+        "agent_id": "claude_1",
+        "repo": "voro-guard",
+        "updated_at": "2026-04-01T12:00:00Z",
+        "current_objective": "hydration objective",
+    }
+
+    publish_learning_state(
+        LearningStatePublishRequest(
+            workspace_id=ws,
+            source_id="work-state:claude-1:voro-guard:a",
+            state_type="work-state",
+            payload={
+                **common_state,
+                "workspace_root": "/workspace-a",
+                "worktree_path": "/workspace-a/voro-guard",
+            },
+            metadata={"published_at": "2026-04-01T12:00:00Z"},
+        ),
+        authorization=None,
+    )
+    publish_learning_state(
+        LearningStatePublishRequest(
+            workspace_id=ws,
+            source_id="work-state:claude-1:voro-guard:b",
+            state_type="work-state",
+            payload={
+                **common_state,
+                "workspace_root": "/workspace-b",
+                "worktree_path": "/workspace-b/voro-guard",
+                "current_objective": "workspace b objective",
+            },
+            metadata={"published_at": "2026-04-01T12:00:00Z"},
+        ),
+        authorization=None,
+    )
+
+    client = TestClient(app)
+
+    def _route_get(url: str, *, params=None, headers=None, timeout=None):
+        path = url.removeprefix(mod.INDEX_GUARD_URL)
+        response = client.get(path, params=params, headers=headers)
+        return httpx.Response(
+            status_code=response.status_code,
+            json=response.json(),
+            request=httpx.Request("GET", url),
+        )
+
+    with patch("httpx.get", side_effect=_route_get):
+        result = mod.hydrate_session(
+            workspace_id=ws,
+            agent_id="claude_1",
+            repo="voro-guard",
+            workspace_root="/workspace-b",
+        )
+
+    assert result["ok"] is True
+    assert result["work_state"] is not None
+    assert result["work_state"]["workspace_root"] == "/workspace-b"
+    assert result["work_state"]["current_objective"] == "workspace b objective"
 # ---------------------------------------------------------------------------
 # Auth header
 # ---------------------------------------------------------------------------
@@ -589,14 +689,77 @@ def test_auth_header_absent_when_no_token():
     import voro_mcp.mcp_server as mod
 
     original_token = mod.INDEX_GUARD_TOKEN
+    original_url = mod.INDEX_GUARD_URL
     try:
         mod.INDEX_GUARD_TOKEN = ""
-        with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
-            mod.search_symbols(query="x", workspace_id="ws1", artifact_id="art1")
+        mod.INDEX_GUARD_URL = "https://guard.example.com"
+        with patch.object(mod, "_recover_token_from_local_guard_process", return_value="") as recover_mock:
+            with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
+                mod.search_symbols(query="x", workspace_id="ws1", artifact_id="art1")
         headers = mock.call_args.kwargs["headers"]
         assert "Authorization" not in headers
+        recover_mock.assert_called_once()
     finally:
         mod.INDEX_GUARD_TOKEN = original_token
+        mod.INDEX_GUARD_URL = original_url
+
+
+def test_auth_header_recovers_token_from_local_guard_process():
+    import voro_mcp.mcp_server as mod
+
+    original_token = mod.INDEX_GUARD_TOKEN
+    original_url = mod.INDEX_GUARD_URL
+    try:
+        mod.INDEX_GUARD_TOKEN = ""
+        mod.INDEX_GUARD_URL = "http://127.0.0.1:18765"
+        with patch.object(mod, "_recover_token_from_local_guard_process", return_value="proc-token") as recover_mock:
+            with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
+                mod.search_symbols(query="x", workspace_id="ws1", artifact_id="art1")
+        headers = mock.call_args.kwargs["headers"]
+        assert headers.get("Authorization") == "Bearer proc-token"
+        recover_mock.assert_called_once()
+        assert mod.INDEX_GUARD_TOKEN == "proc-token"
+    finally:
+        mod.INDEX_GUARD_TOKEN = original_token
+        mod.INDEX_GUARD_URL = original_url
+
+
+def test_auth_header_does_not_recover_token_for_remote_guard_url():
+    import voro_mcp.mcp_server as mod
+
+    original_token = mod.INDEX_GUARD_TOKEN
+    original_url = mod.INDEX_GUARD_URL
+    try:
+        mod.INDEX_GUARD_TOKEN = ""
+        mod.INDEX_GUARD_URL = "https://guard.example.com"
+        with patch.object(mod, "_recover_token_from_local_guard_process", return_value="") as recover_mock:
+            with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
+                mod.search_symbols(query="x", workspace_id="ws1", artifact_id="art1")
+        headers = mock.call_args.kwargs["headers"]
+        assert "Authorization" not in headers
+        recover_mock.assert_called_once()
+    finally:
+        mod.INDEX_GUARD_TOKEN = original_token
+        mod.INDEX_GUARD_URL = original_url
+
+
+def test_auth_header_does_not_recover_token_for_local_non_managed_port():
+    import voro_mcp.mcp_server as mod
+
+    original_token = mod.INDEX_GUARD_TOKEN
+    original_url = mod.INDEX_GUARD_URL
+    try:
+        mod.INDEX_GUARD_TOKEN = ""
+        mod.INDEX_GUARD_URL = "http://127.0.0.1:8080"
+        with patch.object(mod, "_recover_token_from_local_guard_process", return_value="") as recover_mock:
+            with _mock_post(_make_response(200, {"ok": True, "results": []})) as mock:
+                mod.search_symbols(query="x", workspace_id="ws1", artifact_id="art1")
+        headers = mock.call_args.kwargs["headers"]
+        assert "Authorization" not in headers
+        recover_mock.assert_called_once()
+    finally:
+        mod.INDEX_GUARD_TOKEN = original_token
+        mod.INDEX_GUARD_URL = original_url
 
 
 # ---------------------------------------------------------------------------
@@ -649,3 +812,45 @@ def test_start_managed_server_sets_artifact_root_when_missing(monkeypatch):
     assert env["ARTIFACT_ROOT"] == "/tmp/xdg-state/voro-mcp/artifacts"
     assert "voro_mcp.main:app" in popen_mock.call_args.args[0]
     mod._managed_proc = None
+
+
+def test_load_repo_local_env_extracts_missing_index_guard_vars():
+    import voro_mcp.mcp_server as mod
+
+    stdout = (
+        b"CODE_INDEX_SIGNING_KEY=sign-key\0"
+        b"CODE_INDEX_SERVICE_TOKEN=svc-token\0"
+        b"UNRELATED=value\0"
+    )
+    completed = MagicMock(stdout=stdout)
+    with patch.object(mod, "_repo_root", return_value=Path("/tmp/repo")):
+        with patch("pathlib.Path.is_file", return_value=True):
+            with patch.dict(mod.os.environ, {}, clear=True):
+                with patch("subprocess.run", return_value=completed) as run_mock:
+                    loaded = mod._load_repo_local_env()
+    run_mock.assert_called_once()
+    assert loaded == {
+        "CODE_INDEX_SIGNING_KEY": "sign-key",
+        "CODE_INDEX_SERVICE_TOKEN": "svc-token",
+    }
+
+
+def test_start_managed_server_updates_token_from_repo_local_env():
+    import voro_mcp.mcp_server as mod
+
+    original_token = mod.INDEX_GUARD_TOKEN
+    original_proc = mod._managed_proc
+    proc = MagicMock()
+    try:
+        mod.INDEX_GUARD_TOKEN = ""
+        mod._managed_proc = None
+        with patch.object(mod, "_load_repo_local_env", return_value={"CODE_INDEX_SERVICE_TOKEN": "repo-token"}):
+            with patch("subprocess.Popen", return_value=proc) as popen_mock:
+                with patch("httpx.get", return_value=httpx.Response(200, json={"status": "ok"})):
+                    mod._start_managed_server()
+        env = popen_mock.call_args.kwargs["env"]
+        assert env["CODE_INDEX_SERVICE_TOKEN"] == "repo-token"
+        assert mod.INDEX_GUARD_TOKEN == "repo-token"
+    finally:
+        mod.INDEX_GUARD_TOKEN = original_token
+        mod._managed_proc = original_proc

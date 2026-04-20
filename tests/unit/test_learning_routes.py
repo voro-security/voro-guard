@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import importlib
 
 from fastapi.testclient import TestClient
 
@@ -19,6 +20,56 @@ def setup_function() -> None:
     settings.signing_key = "dev-signing-key"
     settings.service_token = ""
     settings.adaptive_learning_enabled = False
+
+
+def test_local_managed_runtime_bootstraps_stable_signing_key(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("UVICORN_PORT", "18765")
+    monkeypatch.delenv("CODE_INDEX_SIGNING_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    import voro_mcp.config as config_mod
+
+    config_mod = importlib.reload(config_mod)
+    first = config_mod.settings.signing_key
+    state_path = tmp_path / ".claude" / "state" / "voro-guard-local-signing.json"
+
+    assert first
+    assert state_path.exists()
+
+    config_mod = importlib.reload(config_mod)
+    assert config_mod.settings.signing_key == first
+
+
+def test_non_managed_runtime_preserves_explicit_signing_key(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("UVICORN_PORT", "8080")
+    monkeypatch.setenv("CODE_INDEX_SIGNING_KEY", "explicit-non-managed-key")
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    import voro_mcp.config as config_mod
+
+    config_mod = importlib.reload(config_mod)
+    state_path = tmp_path / ".claude" / "state" / "voro-guard-local-signing.json"
+
+    assert config_mod.settings.signing_key == "explicit-non-managed-key"
+    assert not state_path.exists()
+
+
+def test_local_managed_runtime_falls_back_to_transient_key_on_oserror(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("UVICORN_PORT", "18765")
+    monkeypatch.delenv("CODE_INDEX_SIGNING_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    import voro_mcp.config as config_mod
+
+    def raise_oserror(*args, **kwargs):
+        raise OSError("read-only home")
+
+    monkeypatch.setattr(Path, "mkdir", raise_oserror)
+    config_mod = importlib.reload(config_mod)
+    state_path = tmp_path / ".claude" / "state" / "voro-guard-local-signing.json"
+
+    assert config_mod.settings.signing_key
+    assert not state_path.exists()
 
 
 def test_learning_routes_disabled_return_404(tmp_path: Path) -> None:
