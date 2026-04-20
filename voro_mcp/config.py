@@ -18,9 +18,6 @@ def _load_or_create_local_managed_signing_key() -> str:
     if not _is_local_managed_guard_runtime():
         return ""
 
-    if os.getenv("CODE_INDEX_SIGNING_KEY", "").strip():
-        return os.getenv("CODE_INDEX_SIGNING_KEY", "").strip()
-
     try:
         if _LOCAL_SIGNING_STATE_PATH.is_file():
             data = json.loads(_LOCAL_SIGNING_STATE_PATH.read_text(encoding="utf-8"))
@@ -54,7 +51,7 @@ def _load_or_create_local_managed_signing_key() -> str:
 class Settings(BaseModel):
     trust_mode: str = os.getenv("CODE_INDEX_TRUST_MODE", "strict").strip().lower()
     signer: str = os.getenv("CODE_INDEX_SIGNER", "voro-index-guard").strip()
-    signing_key: str = _load_or_create_local_managed_signing_key()
+    signing_key: str = os.getenv("CODE_INDEX_SIGNING_KEY", "").strip() or _load_or_create_local_managed_signing_key()
     artifact_root: str = os.getenv("ARTIFACT_ROOT", "./data/artifacts").strip()
     adaptive_learning_enabled: bool = os.getenv("VORO_ADAPTIVE_LEARNING", "").strip().lower() in ("1", "true")
     service_token: str = os.getenv("CODE_INDEX_SERVICE_TOKEN", "").strip()

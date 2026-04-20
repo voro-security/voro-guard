@@ -40,6 +40,20 @@ def test_local_managed_runtime_bootstraps_stable_signing_key(tmp_path: Path, mon
     assert config_mod.settings.signing_key == first
 
 
+def test_non_managed_runtime_preserves_explicit_signing_key(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("UVICORN_PORT", "8080")
+    monkeypatch.setenv("CODE_INDEX_SIGNING_KEY", "explicit-non-managed-key")
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    import voro_mcp.config as config_mod
+
+    config_mod = importlib.reload(config_mod)
+    state_path = tmp_path / ".claude" / "state" / "voro-guard-local-signing.json"
+
+    assert config_mod.settings.signing_key == "explicit-non-managed-key"
+    assert not state_path.exists()
+
+
 def test_learning_routes_disabled_return_404(tmp_path: Path) -> None:
     settings.artifact_root = str(tmp_path / "artifacts")
 
