@@ -6,15 +6,17 @@
 # Class: generated-reference
 # Authority: machine-generated
 # Generator: scripts/generate_codebase_map.py
-# Source Revision: f09c506
+# Source Revision: 8ba6ba5
 
-**23 files, 3,915 lines**
+**23 files, 4,085 lines**
 
 ## voro_mcp/
 
-### `voro_mcp/config.py` (21 lines)
+### `voro_mcp/config.py` (67 lines)
 
 - **class Settings**
+- `_is_local_managed_guard_runtime()`
+- `_load_or_create_local_managed_signing_key()`
 
 ### `voro_mcp/main.py` (36 lines)
 
@@ -28,8 +30,12 @@ Internal imports:
 - `from voro_mcp.routes.learning import router`
 - `from voro_mcp.routes.query import router`
 
-### `voro_mcp/mcp_server.py` (750 lines)
+### `voro_mcp/mcp_server.py` (874 lines)
 
+- `_repo_root()`
+- `_load_repo_local_env()`
+- `_is_local_guard_url()`
+- `_recover_token_from_local_guard_process()`
 - `_build_auth_headers()`
 - `_default_managed_artifact_root()`
 - `_start_managed_server()`
