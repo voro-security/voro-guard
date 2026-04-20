@@ -26,6 +26,10 @@ Three product repos + voro-guard as infrastructure service. No cross-repo Python
 
 **voro-brain is the primary consumer.** It spawns `python -m voro_mcp.mcp_server` as a subprocess and communicates via MCP stdio protocol. The MCP server manages a FastAPI subprocess on `127.0.0.1:18765`.
 
+Endpoint authority:
+- `127.0.0.1:18765` is the managed local hydration/publish endpoint used by startup and closeout flows.
+- `127.0.0.1:8080` is the direct FastAPI HTTP surface and core health endpoint.
+
 ## Architecture Role
 
 voro-guard is a **service** called by voro-brain via MCP stdio subprocess. It is never imported as a Python module by any other repo.

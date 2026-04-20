@@ -1,11 +1,60 @@
-from pydantic import BaseModel
+import json
 import os
+from pathlib import Path
+import secrets
+
+from pydantic import BaseModel
+
+
+_LOCAL_MANAGED_PORT = "18765"
+_LOCAL_SIGNING_STATE_PATH = Path.home() / ".claude" / "state" / "voro-guard-local-signing.json"
+
+
+def _is_local_managed_guard_runtime() -> bool:
+    return os.getenv("UVICORN_PORT", "").strip() == _LOCAL_MANAGED_PORT
+
+
+def _load_or_create_local_managed_signing_key() -> str:
+    if not _is_local_managed_guard_runtime():
+        return ""
+
+    if os.getenv("CODE_INDEX_SIGNING_KEY", "").strip():
+        return os.getenv("CODE_INDEX_SIGNING_KEY", "").strip()
+
+    try:
+        if _LOCAL_SIGNING_STATE_PATH.is_file():
+            data = json.loads(_LOCAL_SIGNING_STATE_PATH.read_text(encoding="utf-8"))
+            key = str(data.get("signing_key") or "").strip()
+            if key:
+                return key
+    except Exception:
+        pass
+
+    key = secrets.token_hex(32)
+    _LOCAL_SIGNING_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _LOCAL_SIGNING_STATE_PATH.write_text(
+        json.dumps(
+            {
+                "schema_version": "voro-guard-local-signing-v1",
+                "scope": "managed-local-18765",
+                "signing_key": key,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    try:
+        os.chmod(_LOCAL_SIGNING_STATE_PATH, 0o600)
+    except OSError:
+        pass
+    return key
 
 
 class Settings(BaseModel):
     trust_mode: str = os.getenv("CODE_INDEX_TRUST_MODE", "strict").strip().lower()
     signer: str = os.getenv("CODE_INDEX_SIGNER", "voro-index-guard").strip()
-    signing_key: str = os.getenv("CODE_INDEX_SIGNING_KEY", "").strip()
+    signing_key: str = _load_or_create_local_managed_signing_key()
     artifact_root: str = os.getenv("ARTIFACT_ROOT", "./data/artifacts").strip()
     adaptive_learning_enabled: bool = os.getenv("VORO_ADAPTIVE_LEARNING", "").strip().lower() in ("1", "true")
     service_token: str = os.getenv("CODE_INDEX_SERVICE_TOKEN", "").strip()
