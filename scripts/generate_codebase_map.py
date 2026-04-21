@@ -16,10 +16,14 @@ OUTPUT = REPO_ROOT / "docs" / "CODEBASE_MAP.md"
 
 
 def source_revision() -> str:
-    """Return the latest committed voro_mcp/ revision, or unknown if unavailable."""
+    """Return the latest committed voro_mcp/ revision, or unknown if unavailable.
+
+    Use ``--full-history`` so merge-parent ordering does not change the emitted
+    revision between a branch head and GitHub's pull-request merge ref.
+    """
     try:
         return subprocess.check_output(
-            ["git", "log", "-1", "--format=%h", "--", "voro_mcp"],
+            ["git", "log", "--full-history", "-1", "--format=%h", "--", "voro_mcp"],
             cwd=REPO_ROOT,
             text=True,
         ).strip()
