@@ -718,3 +718,110 @@ def test_base_url_used_for_all_tools():
         assert mock.call_args.args[0].startswith("http://custom-host:9999")
     finally:
         mod.INDEX_GUARD_URL = original_url
+
+
+def test_load_repo_local_env_extracts_missing_index_guard_vars():
+    import app.mcp_server as mod
+
+    stdout = (
+        b"CODE_INDEX_SIGNING_KEY=test-signing-key\0"
+        b"CODE_INDEX_SERVICE_TOKEN=test-service-token\0"
+        b"UNRELATED=value\0"
+    )
+    completed = MagicMock(stdout=stdout)
+    with patch.object(mod, "_repo_root", return_value=Path("/tmp/repo")):
+        with patch("pathlib.Path.is_file", return_value=True):
+            with patch.dict(mod.os.environ, {}, clear=True):
+                with patch("subprocess.run", return_value=completed) as run_mock:
+                    loaded = mod._load_repo_local_env()
+
+    run_mock.assert_called_once()
+    assert loaded == {
+        "CODE_INDEX_SIGNING_KEY": "test-signing-key",
+        "CODE_INDEX_SERVICE_TOKEN": "test-service-token",
+    }
+
+
+def test_load_repo_local_env_uses_managed_local_signing_fallback(tmp_path: Path):
+    import app.mcp_server as mod
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".envrc").write_text("# test envrc\n", encoding="utf-8")
+    state_file = tmp_path / "voro-guard-local-signing.json"
+    state_file.write_text(
+        '{"schema_version":"voro-guard-local-signing-v1",'
+        '"scope":"managed-local-18765","signing_key":"test-local-signing-key"}\n',
+        encoding="utf-8",
+    )
+
+    completed = MagicMock(stdout=b"CODE_INDEX_SERVICE_TOKEN=test-service-token\0")
+    original_url = mod.INDEX_GUARD_URL
+    try:
+        mod.INDEX_GUARD_URL = "http://127.0.0.1:18765"
+        with patch.object(mod, "_repo_root", return_value=repo):
+            with patch.object(mod, "_LOCAL_MANAGED_SIGNING_STATE", state_file):
+                with patch.dict(mod.os.environ, {}, clear=True):
+                    with patch("subprocess.run", return_value=completed):
+                        loaded = mod._load_repo_local_env()
+    finally:
+        mod.INDEX_GUARD_URL = original_url
+
+    assert loaded == {
+        "CODE_INDEX_SERVICE_TOKEN": "test-service-token",
+        "CODE_INDEX_SIGNING_KEY": "test-local-signing-key",
+    }
+
+
+def test_load_managed_local_signing_key_ignores_non_managed_url(tmp_path: Path):
+    import app.mcp_server as mod
+
+    state_file = tmp_path / "voro-guard-local-signing.json"
+    state_file.write_text(
+        '{"schema_version":"voro-guard-local-signing-v1",'
+        '"scope":"managed-local-18765","signing_key":"test-local-signing-key"}\n',
+        encoding="utf-8",
+    )
+
+    original_url = mod.INDEX_GUARD_URL
+    try:
+        mod.INDEX_GUARD_URL = "http://127.0.0.1:8080"
+        with patch.object(mod, "_LOCAL_MANAGED_SIGNING_STATE", state_file):
+            assert mod._load_managed_local_signing_key() == ""
+    finally:
+        mod.INDEX_GUARD_URL = original_url
+
+
+def test_load_repo_local_env_uses_bounded_timeout():
+    import app.mcp_server as mod
+
+    completed = MagicMock(stdout=b"CODE_INDEX_SERVICE_TOKEN=test-service-token\0")
+    with patch.object(mod, "_repo_root", return_value=Path("/tmp/repo")):
+        with patch("pathlib.Path.is_file", return_value=True):
+            with patch.dict(mod.os.environ, {}, clear=True):
+                with patch("subprocess.run", return_value=completed) as run_mock:
+                    mod._load_repo_local_env()
+
+    assert run_mock.call_args.kwargs["timeout"] == 15
+
+
+def test_start_managed_server_injects_repo_local_env():
+    import app.mcp_server as mod
+
+    original_proc = mod._managed_proc
+    proc = MagicMock()
+    try:
+        mod._managed_proc = None
+        with patch.object(
+            mod,
+            "_load_repo_local_env",
+            return_value={"CODE_INDEX_SIGNING_KEY": "test-signing-key"},
+        ):
+            with patch("subprocess.Popen", return_value=proc) as popen_mock:
+                with patch("httpx.get", return_value=httpx.Response(200, json={"status": "ok"})):
+                    mod._start_managed_server()
+
+        env = popen_mock.call_args.kwargs["env"]
+        assert env["CODE_INDEX_SIGNING_KEY"] == "test-signing-key"
+    finally:
+        mod._managed_proc = original_proc

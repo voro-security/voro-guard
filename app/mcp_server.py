@@ -17,8 +17,11 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 import hashlib
+import json
 import logging
 import os
+from pathlib import Path
+from urllib.parse import urlparse
 import signal
 import subprocess
 import sys
@@ -64,12 +67,90 @@ _MANAGED_PORT: int = int(os.getenv("INDEX_GUARD_MANAGED_PORT", "18765"))
 # Maximum seconds to wait for the managed FastAPI server to become ready.
 _STARTUP_TIMEOUT: int = int(os.getenv("INDEX_GUARD_STARTUP_TIMEOUT", "15"))
 
+_REPO_LOCAL_ENV_KEYS: tuple[str, ...] = (
+    "CODE_INDEX_SERVICE_TOKEN",
+    "CODE_INDEX_SIGNING_KEY",
+    "CODE_INDEX_GITHUB_TOKEN",
+    "VORO_ADAPTIVE_LEARNING",
+)
+
+_LOCAL_MANAGED_SIGNING_STATE = Path.home() / ".claude" / "state" / "voro-guard-local-signing.json"
+
 
 # ---------------------------------------------------------------------------
 # Managed subprocess lifecycle
 # ---------------------------------------------------------------------------
 
 _managed_proc: subprocess.Popen | None = None
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _load_managed_local_signing_key() -> str:
+    """Load the managed-local signing key fallback for the 18765 runtime only."""
+    try:
+        parsed = urlparse(INDEX_GUARD_URL)
+        host = (parsed.hostname or "").strip().lower()
+        port = parsed.port or _MANAGED_PORT
+    except Exception:
+        return ""
+
+    if host not in {"127.0.0.1", "localhost"} or port != 18765:
+        return ""
+    if not _LOCAL_MANAGED_SIGNING_STATE.is_file():
+        return ""
+
+    try:
+        payload = json.loads(_LOCAL_MANAGED_SIGNING_STATE.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+
+    if payload.get("scope") != "managed-local-18765":
+        return ""
+    return str(payload.get("signing_key") or "").strip()
+
+
+def _load_repo_local_env() -> dict[str, str]:
+    """Best-effort repo-local env hydration for managed local runs."""
+    envrc = _repo_root() / ".envrc"
+    if not envrc.is_file():
+        return {}
+
+    missing_keys = [key for key in _REPO_LOCAL_ENV_KEYS if not os.getenv(key)]
+    if not missing_keys:
+        return {}
+
+    try:
+        proc = subprocess.run(
+            ["bash", "-c", "set -a; source ./.envrc >/dev/null 2>&1 || true; env -0"],
+            cwd=str(_repo_root()),
+            capture_output=True,
+            check=True,
+            timeout=15,
+        )
+    except Exception:
+        return {}
+
+    loaded: dict[str, str] = {}
+    for entry in proc.stdout.split(b"\0"):
+        if not entry or b"=" not in entry:
+            continue
+        key_raw, value_raw = entry.split(b"=", 1)
+        key = key_raw.decode("utf-8", "ignore")
+        if key not in missing_keys:
+            continue
+        value = value_raw.decode("utf-8", "ignore")
+        if value:
+            loaded[key] = value
+
+    if "CODE_INDEX_SIGNING_KEY" in missing_keys and "CODE_INDEX_SIGNING_KEY" not in loaded:
+        signing_key = _load_managed_local_signing_key()
+        if signing_key:
+            loaded["CODE_INDEX_SIGNING_KEY"] = signing_key
+
+    return loaded
 
 
 def _build_auth_headers() -> dict[str, str]:
@@ -85,6 +166,7 @@ def _start_managed_server() -> None:
         return
 
     env = os.environ.copy()
+    env.update(_load_repo_local_env())
     env["UVICORN_PORT"] = str(_MANAGED_PORT)  # passed via CLI below
 
     cmd = [
