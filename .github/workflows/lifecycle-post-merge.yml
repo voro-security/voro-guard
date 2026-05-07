@@ -35,7 +35,6 @@ jobs:
         if: ${{ env.LIFECYCLE_POST_MERGE_READY == 'true' }}
         run: |
           python3 voro-docs/.github/scripts/register_post_merge_lifecycle_transition.py \
-            --mode "${LIFECYCLE_POST_MERGE_MODE:-advisory}" \
             --pr-url "${{ github.event.pull_request.html_url }}" \
             --branch "${{ github.event.pull_request.head.ref }}" \
             --merged-at "${{ github.event.pull_request.merged_at }}"
