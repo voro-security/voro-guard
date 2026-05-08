@@ -11,18 +11,28 @@ jobs:
   lifecycle-post-merge:
     if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
+    env:
+      LIFECYCLE_POST_MERGE_MODE: advisory
     steps:
       - name: Checkout lifecycle receiver
         env:
           VORO_DOCS_STATUS_PAT: ${{ secrets.VORO_DOCS_STATUS_PAT }}
         run: |
+          mode="${LIFECYCLE_POST_MERGE_MODE:-advisory}"
           if [ -z "${VORO_DOCS_STATUS_PAT:-}" ]; then
-            echo "ERROR: VORO_DOCS_STATUS_PAT is missing. Requires read access to skylily1/voro-docs." >&2
-            exit 1
+            echo "LIFECYCLE_POST_MERGE_READY=false" >> "$GITHUB_ENV"
+            if [ "${mode}" = "enforce" ]; then
+              echo "::error::VORO_DOCS_STATUS_PAT is missing. Requires read access to skylily1/voro-docs."
+              exit 1
+            fi
+            echo "::warning::VORO_DOCS_STATUS_PAT is missing; lifecycle post-merge receiver skipped in advisory mode."
+            exit 0
           fi
           git clone --depth 1 "https://x-access-token:${VORO_DOCS_STATUS_PAT}@github.com/skylily1/voro-docs.git" voro-docs
+          echo "LIFECYCLE_POST_MERGE_READY=true" >> "$GITHUB_ENV"
 
       - name: Register merged PR lifecycle transition
+        if: ${{ env.LIFECYCLE_POST_MERGE_READY == 'true' }}
         run: |
           python3 voro-docs/.github/scripts/register_post_merge_lifecycle_transition.py \
             --pr-url "${{ github.event.pull_request.html_url }}" \
